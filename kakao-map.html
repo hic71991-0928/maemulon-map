@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>매물on 지도</title>
+<style>
+  :root {
+    --toss-blue: #3182f6;
+    --toss-text: #191f28;
+    --toss-text-sub: #4e5968;
+    --toss-bg: #f9fafb;
+    --toss-line: #e5e8eb;
+  }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; }
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: #fff;
+    border-bottom: 1px solid var(--toss-line);
+    font-size: 13px;
+    color: var(--toss-text-sub);
+  }
+  #topbar strong { color: var(--toss-text); }
+  #status.error { color: #f04452; }
+  #map { width: 100%; height: calc(100% - 37px); background: var(--toss-bg); }
+  .info-window {
+    padding: 8px 10px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--toss-text);
+    max-width: 220px;
+  }
+  .info-window b { display: block; margin-bottom: 3px; }
+  .info-window button {
+    margin-top: 6px;
+    border: none;
+    background: var(--toss-blue);
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div id="topbar">
+    <strong>매물on 지도</strong>
+    <span id="status">부모 창(확장 프로그램)에서 매물 데이터를 기다리는 중...</span>
+  </div>
+  <div id="map"></div>
+  <script>
+    // v2.99: 이 페이지는 GitHub Pages 같은 외부 호스팅에 올려서 새 탭/새 창으로 열고,
+    // 매물on 확장 프로그램(map.html)이 window.opener.postMessage로 매물 데이터를
+    // 전달하는 방식으로 동작한다(확장 프로그램 페이지 안에서는 원격 SDK를 불러올 수
+    // 없어서, 일반 웹페이지인 이 파일을 별도로 열어 카카오맵 SDK를 여기서 불러온다).
+
+    // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
+    const KAKAO_JS_KEY = "04fee5ca8c58b6d47d78a373007e8854";
+    const KAKAO_REST_KEY = "f4968f8e8d8131968ea9df8ef2592638";
+
+    const statusEl = document.getElementById("status");
+    function setStatus(text, isError) {
+      statusEl.textContent = text;
+      statusEl.classList.toggle("error", !!isError);
+    }
+    function esc(v) {
+      return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function loadKakaoSdk() {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(KAKAO_JS_KEY)}&libraries=clusterer&autoload=false`;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error("카카오맵 SDK 로드 실패"));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function geocodeAddress(address) {
+      const res = await fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`, {
+        headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const doc = data.documents && data.documents[0];
+      if (!doc) return null;
+      return { lat: parseFloat(doc.y), lng: parseFloat(doc.x) };
+    }
+
+    let mapInstance = null;
+
+    async function renderListings(list) {
+      setStatus(`매물 ${list.length}건 확인 중...`);
+      const markers = [];
+      const bounds = new kakao.maps.LatLngBounds();
+      const infoWindow = new kakao.maps.InfoWindow({ removable: true });
+      const updatedCoords = [];
+      let failCount = 0;
+
+      for (const rec of list) {
+        const addr = rec["전체주소"];
+        if (!addr) continue;
+        let lat = rec.__위도;
+        let lng = rec.__경도;
+        if (typeof lat !== "number" || typeof lng !== "number") {
+          const geo = await geocodeAddress(addr);
+          if (!geo) { failCount++; continue; }
+          lat = geo.lat;
+          lng = geo.lng;
+          updatedCoords.push({ id: rec.__매물번호, lat, lng });
+        }
+        const pos = new kakao.maps.LatLng(lat, lng);
+        const marker = new kakao.maps.Marker({ position: pos });
+        kakao.maps.event.addListener(marker, "click", () => {
+          const html = `<div class="info-window">
+            <b>${esc(rec["제목"] || "(제목 없음)")}</b>
+            ${esc(rec["거래유형"] || "")} ${esc(rec["매물종류"] || "")}<br/>
+            ${esc(addr)}
+            <br/><button type="button" data-id="${esc(rec.__매물번호)}">수정창 열기</button>
+          </div>`;
+          infoWindow.setContent(html);
+          infoWindow.open(mapInstance, marker);
+        });
+        markers.push(marker);
+        bounds.extend(pos);
+      }
+
+      // v2.99: 정보창의 "수정창 열기" 버튼은 매번 새로 그려지므로 document 위임 방식으로
+      // 한 번만 연결. 이 페이지 자체는 chrome.* API가 없어서, 부모 창(확장 프로그램)에
+      // postMessage로 요청만 보내고 실제 창 열기는 부모 쪽에서 처리한다.
+      document.getElementById("map").addEventListener("click", (e) => {
+        const btn = e.target.closest(".info-window button[data-id]");
+        if (btn && window.opener) {
+          window.opener.postMessage({ type: "maemulon-open-edit", id: btn.dataset.id }, "*");
+        }
+      });
+
+      if (markers.length) {
+        new kakao.maps.MarkerClusterer({ map: mapInstance, markers, averageCenter: true, minLevel: 6 });
+        mapInstance.setBounds(bounds);
+        setStatus(`총 ${markers.length}건 표시됨${failCount ? ` (주소 변환 실패 ${failCount}건 제외)` : ""}.`);
+      } else {
+        setStatus("지도에 표시할 매물이 없습니다(전체주소가 저장된 매물이 없거나 좌표 변환에 실패했습니다).", true);
+      }
+
+      // v2.99: 새로 변환한 좌표는 부모 창에 돌려보내 chrome.storage에 캐싱하게 한다
+      // (다음에 열 때는 다시 지오코딩하지 않도록).
+      if (updatedCoords.length && window.opener) {
+        window.opener.postMessage({ type: "maemulon-coords-update", coords: updatedCoords }, "*");
+      }
+    }
+
+    async function main() {
+      try {
+        await loadKakaoSdk();
+      } catch (e) {
+        setStatus("카카오맵 SDK를 불러오지 못했습니다. 키 또는 카카오 콘솔의 Web 플랫폼(도메인) 등록을 확인해주세요.", true);
+        return;
+      }
+      kakao.maps.load(() => {
+        mapInstance = new kakao.maps.Map(document.getElementById("map"), {
+          center: new kakao.maps.LatLng(36.3504, 127.3845), // 매물이 없을 때 기본 중심(대전)
+          level: 8,
+        });
+        window.addEventListener("message", (e) => {
+          if (e.data && e.data.type === "maemulon-listings") {
+            renderListings(e.data.list || []);
+          }
+        });
+        if (window.opener) {
+          window.opener.postMessage({ type: "maemulon-ready" }, "*");
+        } else {
+          setStatus("이 페이지는 매물on 확장 프로그램의 '지도보기' 버튼으로 열어야 동작합니다.", true);
+        }
+      });
+    }
+
+    main();
+  </script>
+</body>
+</html>
