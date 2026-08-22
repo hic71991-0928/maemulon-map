@@ -43,6 +43,24 @@
     border-radius: 6px;
     cursor: pointer;
   }
+  /* v2.100: 지적편집도(지번지도)를 기본값으로 켜둘 때 같이 보여주는 범례
+     (용도지역 색상 - 국토교통부/카카오맵 공통 표준 배색) */
+  #legend {
+    position: absolute;
+    left: 10px;
+    bottom: 24px;
+    background: #fff;
+    border: 1px solid var(--toss-line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 11.5px;
+    color: var(--toss-text-sub);
+    box-shadow: 0 1px 4px rgba(25, 31, 40, 0.12);
+    z-index: 10;
+  }
+  #legend .legend-title { font-weight: 700; color: var(--toss-text); margin-bottom: 4px; }
+  #legend .legend-row { display: flex; align-items: center; gap: 5px; margin: 2px 0; }
+  #legend .legend-swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
 </style>
 </head>
 <body>
@@ -51,6 +69,16 @@
     <span id="status">부모 창(확장 프로그램)에서 매물 데이터를 기다리는 중...</span>
   </div>
   <div id="map"></div>
+  <div id="legend">
+    <div class="legend-title">지적편집도 범례(용도지역)</div>
+    <div class="legend-row"><span class="legend-swatch" style="background:#ffe89e"></span>주거지역</div>
+    <div class="legend-row"><span class="legend-swatch" style="background:#ff9e9e"></span>상업지역</div>
+    <div class="legend-row"><span class="legend-swatch" style="background:#b7c8e8"></span>공업지역</div>
+    <div class="legend-row"><span class="legend-swatch" style="background:#b8e6b0"></span>녹지지역</div>
+    <div class="legend-row"><span class="legend-swatch" style="background:#e0d8b0"></span>관리지역</div>
+    <div class="legend-row"><span class="legend-swatch" style="background:#8fc98f"></span>농림지역</div>
+    <div class="legend-row"><span class="legend-swatch" style="background:#7fb3b3"></span>자연환경보전지역</div>
+  </div>
   <script>
     // v2.99: 이 페이지는 GitHub Pages 같은 외부 호스팅에 올려서 새 탭/새 창으로 열고,
     // 매물on 확장 프로그램(map.html)이 window.opener.postMessage로 매물 데이터를
@@ -166,6 +194,10 @@
           center: new kakao.maps.LatLng(36.3504, 127.3845), // 매물이 없을 때 기본 중심(대전)
           level: 8,
         });
+        // v2.100: 지도/스카이뷰 전환 + 지적편집도(지번) 켜기/끄기 컨트롤 표시
+        mapInstance.addControl(new kakao.maps.MapTypeControl(), kakao.maps.ControlPosition.TOPRIGHT);
+        // v2.100: 기본값을 지적편집도(지번지도)로 고정해서 켜둠
+        mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
         window.addEventListener("message", (e) => {
           if (e.data && e.data.type === "maemulon-listings") {
             renderListings(e.data.list || []);
