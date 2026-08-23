@@ -71,12 +71,15 @@
     cursor: pointer;
   }
   #layerControl button.active { background: var(--toss-blue); color: #fff; border-color: var(--toss-blue); }
+  /* v2.103: 로드뷰 창을 드래그로 옮기고, 모서리를 끌어 크기도 조절할 수 있게 변경 */
   #roadviewPanel {
     position: absolute;
     right: 10px;
     top: 47px;
     width: 320px;
-    height: 240px;
+    height: 260px;
+    min-width: 220px;
+    min-height: 180px;
     background: #ddd;
     border: 1px solid var(--toss-line);
     border-radius: 8px;
@@ -84,23 +87,32 @@
     box-shadow: 0 2px 8px rgba(25, 31, 40, 0.2);
     z-index: 20;
     display: none;
+    flex-direction: column;
+    resize: both;
+  }
+  #roadviewTitlebar {
+    flex: none;
+    height: 26px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    font-size: 11.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    cursor: move;
+    user-select: none;
   }
   #roadviewClose {
-    position: absolute;
-    right: 12px;
-    top: 51px;
-    z-index: 21;
     border: none;
-    background: rgba(0, 0, 0, 0.6);
+    background: transparent;
     color: #fff;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
     cursor: pointer;
     font-size: 13px;
     line-height: 1;
-    display: none;
+    padding: 2px 4px;
   }
+  #roadviewInner { flex: 1; min-height: 0; }
 </style>
 </head>
 <body>
@@ -118,8 +130,12 @@
       <button type="button" id="btnRoadview">로드뷰(선택)</button>
     </div>
   </div>
-  <div id="roadviewPanel"></div>
-  <button type="button" id="roadviewClose">✕</button>
+  <div id="roadviewPanel">
+    <div id="roadviewTitlebar">로드뷰 (제목 줄을 끌어서 이동, 오른쪽 아래 모서리를 끌어서 크기 조절)
+      <button type="button" id="roadviewClose">✕</button>
+    </div>
+    <div id="roadviewInner"></div>
+  </div>
   <script>
     // v2.99: 이 페이지는 GitHub Pages 같은 외부 호스팅에 올려서 새 탭/새 창으로 열고,
     // 매물on 확장 프로그램(map.html)이 window.opener.postMessage로 매물 데이터를
@@ -266,19 +282,24 @@
     function wireRoadview() {
       const btn = document.getElementById("btnRoadview");
       const panel = document.getElementById("roadviewPanel");
+      const titlebar = document.getElementById("roadviewTitlebar");
+      const inner = document.getElementById("roadviewInner");
       const closeBtn = document.getElementById("roadviewClose");
       const roadviewClient = new kakao.maps.RoadviewClient();
       let roadview = null;
       let selecting = false;
 
+      // v2.103: "로드뷰(선택)"을 켜면 도로 위에 파란선(로드뷰 지원 구간)이 표시되고,
+      // 끌 때까지 계속 클릭해서 로드뷰를 갱신할 수 있도록 유지(예전엔 1번 클릭하면
+      // 자동으로 선택 모드가 꺼져서 매번 버튼을 다시 눌러야 했음).
       function stopSelecting() {
         selecting = false;
         btn.classList.remove("active");
         document.getElementById("map").style.cursor = "";
+        mapInstance.removeOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW);
       }
       function closeRoadview() {
         panel.style.display = "none";
-        closeBtn.style.display = "none";
         stopSelecting();
       }
 
@@ -287,6 +308,7 @@
         selecting = true;
         btn.classList.add("active");
         document.getElementById("map").style.cursor = "crosshair";
+        mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW);
       });
       closeBtn.addEventListener("click", closeRoadview);
 
@@ -296,14 +318,38 @@
         // v2.102: [버그 수정] 탐색 반경 50m가 너무 좁아 거의 항상 "지원하지 않음"으로
         // 실패하던 문제 - 300m로 넓혀서 도로에서 조금 벗어나 클릭해도 찾도록 함.
         roadviewClient.getNearestPanoId(pos, 300, (panoId) => {
-          if (!panoId) { alert("이 위치는 로드뷰를 지원하지 않습니다."); stopSelecting(); return; }
-          panel.style.display = "block";
-          closeBtn.style.display = "block";
-          if (!roadview) roadview = new kakao.maps.Roadview(panel);
+          if (!panoId) { alert("이 위치는 로드뷰를 지원하지 않습니다."); return; }
+          panel.style.display = "flex";
+          if (!roadview) roadview = new kakao.maps.Roadview(inner);
           roadview.setPanoId(panoId, pos);
-          stopSelecting();
+          // v2.103: 로드뷰 성공 후에도 selecting 모드를 끄지 않아, 계속 다른 지점을
+          // 눌러가며 로드뷰를 이어서 볼 수 있음(버튼을 다시 누르거나 ✕로만 종료).
         });
       });
+
+      // v2.103: 제목 줄을 마우스로 끌어 로드뷰 창 위치 이동
+      let dragging = false, dragDX = 0, dragDY = 0;
+      titlebar.addEventListener("mousedown", (e) => {
+        if (e.target === closeBtn) return;
+        dragging = true;
+        const rect = panel.getBoundingClientRect();
+        dragDX = e.clientX - rect.left;
+        dragDY = e.clientY - rect.top;
+        panel.style.right = "auto";
+        panel.style.left = rect.left + "px";
+        panel.style.top = rect.top + "px";
+        e.preventDefault();
+      });
+      document.addEventListener("mousemove", (e) => {
+        if (!dragging) return;
+        panel.style.left = (e.clientX - dragDX) + "px";
+        panel.style.top = (e.clientY - dragDY) + "px";
+      });
+      document.addEventListener("mouseup", () => { dragging = false; });
+
+      // v2.103: 모서리를 끌어 창 크기를 바꾸면(CSS resize:both) 로드뷰 내부도
+      // 새 크기에 맞게 다시 그려주도록 함
+      new ResizeObserver(() => { if (roadview) roadview.relayout(); }).observe(panel);
     }
 
     async function main() {
