@@ -293,7 +293,9 @@
       kakao.maps.event.addListener(mapInstance, "click", (mouseEvent) => {
         if (!selecting) return;
         const pos = mouseEvent.latLng;
-        roadviewClient.getNearestPanoId(pos, 50, (panoId) => {
+        // v2.102: [버그 수정] 탐색 반경 50m가 너무 좁아 거의 항상 "지원하지 않음"으로
+        // 실패하던 문제 - 300m로 넓혀서 도로에서 조금 벗어나 클릭해도 찾도록 함.
+        roadviewClient.getNearestPanoId(pos, 300, (panoId) => {
           if (!panoId) { alert("이 위치는 로드뷰를 지원하지 않습니다."); stopSelecting(); return; }
           panel.style.display = "block";
           closeBtn.style.display = "block";
