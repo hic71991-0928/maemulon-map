@@ -167,7 +167,7 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.115</span>
+    <span id="buildTag">v2.116</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <div id="mapWrap">
@@ -256,18 +256,13 @@
     document.getElementById("iconCalculator").src = ICONS.calculator;
     document.getElementById("iconRealPrice").src = ICONS.realprice;
 
-    // v2.114: 계산기/실거래가는 URL 새 창 열기만 연결. 이 페이지 자체가 이미
-    // chrome.windows.create(popup)로 뜬 별도 창이라 window.open(url, "_blank")이
-    // 새 창 대신 같은 창을 덮어써버리는 문제가 있었음 - <a target="_blank"> 클릭을
-    // 흉내내는 방식이 팝업 창 환경에서 더 확실하게 새 창을 띄워서 이 방식으로 교체.
+    // v2.116: [버그 수정] v2.114의 <a target="_blank"> 방식은 실제로는 "새 탭"을
+    // 열긴 했지만, 이 지도 페이지 자체가 탭이 없는 팝업 창이다 보니 그 새 탭이
+    // 사용자의 다른(메인) 브라우저 창으로 가버려서 지도 창이 화면에서 사라진
+    //것처럼 보이는 문제가 있었음 - background.js(chrome.windows.create)를 거쳐
+    // 완전히 별도의 새 팝업 창으로 열어서, 지도 창은 그 뒤에 그대로 남아있게 함.
     function openInNewWindow(url) {
-      const a = document.createElement("a");
-      a.href = url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      sendToExtension({ type: "maemulon-open-external", url });
     }
     const CALCULATOR_URL = "https://xn--989a00af8jnslv3dba.com/";
     const REAL_PRICE_URL = "https://rt.molit.go.kr/pt/gis/gis.do?srhThingSecd=G&mobileAt=";
