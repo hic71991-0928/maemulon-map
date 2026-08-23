@@ -24,7 +24,30 @@
   }
   #topbar strong { color: var(--toss-text); }
   #status.error { color: #f04452; }
-  #map { width: 100%; height: calc(100% - 37px); background: var(--toss-bg); }
+  /* v2.105: 로드뷰를 떠 있는 작은 팝업 대신, 지도 옆에 화면을 절반씩 나눠 크게
+     보여주는 방식으로 변경(밸류맵 등 참고 사이트 방식). */
+  #mapWrap { display: flex; width: 100%; height: calc(100% - 37px); }
+  #map { flex: 1; min-width: 0; background: var(--toss-bg); }
+  #roadviewSplit {
+    display: none;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    border-left: 1px solid var(--toss-line);
+  }
+  #roadviewSplitBar {
+    flex: none;
+    height: 32px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+  }
+  #roadviewClose { border: none; background: transparent; color: #fff; cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; }
+  #roadviewInner { flex: 1; min-height: 0; }
   .info-window {
     padding: 8px 10px;
     font-size: 12.5px;
@@ -71,56 +94,23 @@
     cursor: pointer;
   }
   #layerControl button.active { background: var(--toss-blue); color: #fff; border-color: var(--toss-blue); }
-  /* v2.103: 로드뷰 창을 드래그로 옮기고, 모서리를 끌어 크기도 조절할 수 있게 변경 */
-  #roadviewPanel {
-    position: absolute;
-    right: 10px;
-    top: 47px;
-    width: 320px;
-    height: 260px;
-    min-width: 220px;
-    min-height: 180px;
-    background: #ddd;
-    border: 1px solid var(--toss-line);
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(25, 31, 40, 0.2);
-    z-index: 20;
-    display: none;
-    flex-direction: column;
-    resize: both;
-  }
-  #roadviewTitlebar {
-    flex: none;
-    height: 26px;
-    background: rgba(0, 0, 0, 0.65);
-    color: #fff;
-    font-size: 11.5px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 8px;
-    cursor: move;
-    user-select: none;
-  }
-  #roadviewClose {
-    border: none;
-    background: transparent;
-    color: #fff;
-    cursor: pointer;
-    font-size: 13px;
-    line-height: 1;
-    padding: 2px 4px;
-  }
-  #roadviewInner { flex: 1; min-height: 0; }
 </style>
 </head>
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="status">부모 창(확장 프로그램)에서 매물 데이터를 기다리는 중...</span>
+    <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
-  <div id="map"></div>
+  <div id="mapWrap">
+    <div id="map"></div>
+    <div id="roadviewSplit">
+      <div id="roadviewSplitBar">
+        로드뷰 (지도 위 파란선을 클릭하면 여기가 바뀌고, 사진 안에서 이동하면 지도의 빨간 점도 같이 움직입니다)
+        <button type="button" id="roadviewClose">✕</button>
+      </div>
+      <div id="roadviewInner"></div>
+    </div>
+  </div>
   <div id="layerControl">
     <label class="layer-row"><input type="checkbox" id="chkSkyview" /> 위성도</label>
     <label class="layer-row"><input type="checkbox" id="chkDistrict" checked /> 지적도</label>
@@ -130,21 +120,19 @@
       <button type="button" id="btnRoadview">로드뷰(선택)</button>
     </div>
   </div>
-  <div id="roadviewPanel">
-    <div id="roadviewTitlebar">로드뷰 (제목 줄을 끌어서 이동, 오른쪽 아래 모서리를 끌어서 크기 조절)
-      <button type="button" id="roadviewClose">✕</button>
-    </div>
-    <div id="roadviewInner"></div>
-  </div>
   <script>
-    // v2.99: 이 페이지는 GitHub Pages 같은 외부 호스팅에 올려서 새 탭/새 창으로 열고,
-    // 매물on 확장 프로그램(map.html)이 window.opener.postMessage로 매물 데이터를
-    // 전달하는 방식으로 동작한다(확장 프로그램 페이지 안에서는 원격 SDK를 불러올 수
-    // 없어서, 일반 웹페이지인 이 파일을 별도로 열어 카카오맵 SDK를 여기서 불러온다).
+    // v2.105: 이 페이지는 GitHub Pages 같은 외부 호스팅에서 새 탭으로 열린다(확장
+    // 페이지 안에서는 카카오맵 SDK 같은 원격 스크립트를 불러올 수 없어서). chrome.*
+    // 기능(수정창 열기, 좌표 캐싱, 매물 데이터 조회)은 이 페이지에 없어서, manifest.json의
+    // externally_connectable 설정 덕분에 chrome.runtime.sendMessage(확장ID, ...)로
+    // 백그라운드 서비스 워커(background.js)와 직접 대화한다(예전엔 보이지 않아야 할
+    // "다리 역할" 창을 하나 더 띄웠는데, 화면에 계속 잠깐씩 보이는 문제가 있어 이 방식으로 교체).
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
     const KAKAO_JS_KEY = "04fee5ca8c58b6d47d78a373007e8854";
     const KAKAO_REST_KEY = "f4968f8e8d8131968ea9df8ef2592638";
+
+    const EXT_ID = new URLSearchParams(location.search).get("ext");
 
     const statusEl = document.getElementById("status");
     function setStatus(text, isError) {
@@ -153,6 +141,17 @@
     }
     function esc(v) {
       return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // v2.105: 확장 프로그램(background.js)에 메시지를 보내고 응답을 기다린다.
+    function sendToExtension(msg) {
+      return new Promise((resolve) => {
+        if (!EXT_ID || !window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
+          resolve(null);
+          return;
+        }
+        chrome.runtime.sendMessage(EXT_ID, msg, (response) => resolve(response || null));
+      });
     }
 
     function loadKakaoSdk() {
@@ -214,14 +213,11 @@
         bounds.extend(pos);
       }
 
-      // v2.99: 정보창의 "수정창 열기" 버튼은 매번 새로 그려지므로 document 위임 방식으로
-      // 한 번만 연결. 이 페이지 자체는 chrome.* API가 없어서, 부모 창(확장 프로그램)에
-      // postMessage로 요청만 보내고 실제 창 열기는 부모 쪽에서 처리한다.
+      // v2.105: 정보창의 "수정창 열기" 버튼은 매번 새로 그려지므로 document 위임 방식으로
+      // 한 번만 연결하고, chrome.runtime.sendMessage로 확장 프로그램에 요청만 보낸다.
       document.getElementById("map").addEventListener("click", (e) => {
         const btn = e.target.closest(".info-window button[data-id]");
-        if (btn && window.opener) {
-          window.opener.postMessage({ type: "maemulon-open-edit", id: btn.dataset.id }, "*");
-        }
+        if (btn) sendToExtension({ type: "maemulon-open-edit", id: btn.dataset.id });
       });
 
       if (markers.length) {
@@ -232,11 +228,9 @@
         setStatus("지도에 표시할 매물이 없습니다(전체주소가 저장된 매물이 없거나 좌표 변환에 실패했습니다).", true);
       }
 
-      // v2.99: 새로 변환한 좌표는 부모 창에 돌려보내 chrome.storage에 캐싱하게 한다
+      // v2.105: 새로 변환한 좌표는 확장 프로그램에 돌려보내 chrome.storage에 캐싱하게 한다
       // (다음에 열 때는 다시 지오코딩하지 않도록).
-      if (updatedCoords.length && window.opener) {
-        window.opener.postMessage({ type: "maemulon-coords-update", coords: updatedCoords }, "*");
-      }
+      if (updatedCoords.length) sendToExtension({ type: "maemulon-coords-update", coords: updatedCoords });
     }
 
     // v2.101: 카카오 공식 사이트의 "지도유형" 체크박스(위성도/지적도/지형도)를
@@ -277,21 +271,28 @@
       });
     }
 
-    // v2.101: "로드뷰(선택)" 버튼 - 누르면 다음 지도 클릭 지점의 로드뷰를 오른쪽 위 작은
-    // 창으로 띄운다(버튼을 다시 누르거나 ✕를 누르면 선택 모드/로드뷰 창 종료).
+    // v2.105: "로드뷰(선택)" - 켜면 도로 위에 파란선(로드뷰 지원 구간)이 표시되고,
+    // 그 선을 클릭하면 화면이 왼쪽(지도)/오른쪽(로드뷰) 절반씩 나뉘어 크게 보인다.
+    // 로드뷰 사진 안에서 이동/회전하면(position_changed) 지도 위 빨간 점이 같이
+    // 움직이고, 반대로 지도의 파란선을 다시 클릭하면 로드뷰 사진이 그 위치로 바뀐다.
     function wireRoadview() {
       const btn = document.getElementById("btnRoadview");
-      const panel = document.getElementById("roadviewPanel");
-      const titlebar = document.getElementById("roadviewTitlebar");
+      const split = document.getElementById("roadviewSplit");
       const inner = document.getElementById("roadviewInner");
       const closeBtn = document.getElementById("roadviewClose");
       const roadviewClient = new kakao.maps.RoadviewClient();
+      const roadviewMarkerImage = new kakao.maps.MarkerImage(
+        "data:image/svg+xml;charset=UTF-8," +
+          encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="11" cy="11" r="8" fill="#f04452" stroke="#fff" stroke-width="3"/></svg>'),
+        new kakao.maps.Size(22, 22),
+      );
       let roadview = null;
+      let roadviewMarker = null;
       let selecting = false;
 
-      // v2.103: "로드뷰(선택)"을 켜면 도로 위에 파란선(로드뷰 지원 구간)이 표시되고,
-      // 끌 때까지 계속 클릭해서 로드뷰를 갱신할 수 있도록 유지(예전엔 1번 클릭하면
-      // 자동으로 선택 모드가 꺼져서 매번 버튼을 다시 눌러야 했음).
+      function relayoutMap() {
+        kakao.maps.event.trigger(mapInstance, "resize");
+      }
       function stopSelecting() {
         selecting = false;
         btn.classList.remove("active");
@@ -299,7 +300,10 @@
         mapInstance.removeOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW);
       }
       function closeRoadview() {
-        panel.style.display = "none";
+        split.style.display = "none";
+        if (roadviewMarker) { roadviewMarker.setMap(null); roadviewMarker = null; }
+        roadview = null;
+        relayoutMap();
         stopSelecting();
       }
 
@@ -312,44 +316,36 @@
       });
       closeBtn.addEventListener("click", closeRoadview);
 
+      function showRoadviewAt(pos, panoId) {
+        split.style.display = "flex";
+        relayoutMap();
+        if (!roadview) {
+          roadview = new kakao.maps.Roadview(inner);
+          kakao.maps.event.addListener(roadview, "position_changed", () => {
+            const p = roadview.getPosition();
+            if (!roadviewMarker) {
+              roadviewMarker = new kakao.maps.Marker({ position: p, map: mapInstance, image: roadviewMarkerImage });
+            } else {
+              roadviewMarker.setPosition(p);
+            }
+            mapInstance.panTo(p);
+          });
+        }
+        roadview.setPanoId(panoId, pos);
+      }
+
       kakao.maps.event.addListener(mapInstance, "click", (mouseEvent) => {
         if (!selecting) return;
         const pos = mouseEvent.latLng;
-        // v2.102: [버그 수정] 탐색 반경 50m가 너무 좁아 거의 항상 "지원하지 않음"으로
-        // 실패하던 문제 - 300m로 넓혀서 도로에서 조금 벗어나 클릭해도 찾도록 함.
+        // v2.102: 탐색 반경 50m가 너무 좁아 거의 항상 "지원하지 않음"으로 실패하던
+        // 문제 - 300m로 넓혀서 도로에서 조금 벗어나 클릭해도 찾도록 함.
         roadviewClient.getNearestPanoId(pos, 300, (panoId) => {
           if (!panoId) { alert("이 위치는 로드뷰를 지원하지 않습니다."); return; }
-          panel.style.display = "flex";
-          if (!roadview) roadview = new kakao.maps.Roadview(inner);
-          roadview.setPanoId(panoId, pos);
-          // v2.103: 로드뷰 성공 후에도 selecting 모드를 끄지 않아, 계속 다른 지점을
-          // 눌러가며 로드뷰를 이어서 볼 수 있음(버튼을 다시 누르거나 ✕로만 종료).
+          showRoadviewAt(pos, panoId);
         });
       });
 
-      // v2.103: 제목 줄을 마우스로 끌어 로드뷰 창 위치 이동
-      let dragging = false, dragDX = 0, dragDY = 0;
-      titlebar.addEventListener("mousedown", (e) => {
-        if (e.target === closeBtn) return;
-        dragging = true;
-        const rect = panel.getBoundingClientRect();
-        dragDX = e.clientX - rect.left;
-        dragDY = e.clientY - rect.top;
-        panel.style.right = "auto";
-        panel.style.left = rect.left + "px";
-        panel.style.top = rect.top + "px";
-        e.preventDefault();
-      });
-      document.addEventListener("mousemove", (e) => {
-        if (!dragging) return;
-        panel.style.left = (e.clientX - dragDX) + "px";
-        panel.style.top = (e.clientY - dragDY) + "px";
-      });
-      document.addEventListener("mouseup", () => { dragging = false; });
-
-      // v2.103: 모서리를 끌어 창 크기를 바꾸면(CSS resize:both) 로드뷰 내부도
-      // 새 크기에 맞게 다시 그려주도록 함
-      new ResizeObserver(() => { if (roadview) roadview.relayout(); }).observe(panel);
+      new ResizeObserver(() => { if (roadview) roadview.relayout(); }).observe(split);
     }
 
     async function main() {
@@ -359,7 +355,7 @@
         setStatus("카카오맵 SDK를 불러오지 못했습니다. 키 또는 카카오 콘솔의 Web 플랫폼(도메인) 등록을 확인해주세요.", true);
         return;
       }
-      kakao.maps.load(() => {
+      kakao.maps.load(async () => {
         mapInstance = new kakao.maps.Map(document.getElementById("map"), {
           center: new kakao.maps.LatLng(36.3504, 127.3845), // 매물이 없을 때 기본 중심(대전)
           level: 8,
@@ -369,16 +365,14 @@
         wireLayerControl();
         wireLocateButton();
         wireRoadview();
-        window.addEventListener("message", (e) => {
-          if (e.data && e.data.type === "maemulon-listings") {
-            renderListings(e.data.list || []);
-          }
-        });
-        if (window.opener) {
-          window.opener.postMessage({ type: "maemulon-ready" }, "*");
-        } else {
+
+        if (!EXT_ID) {
           setStatus("이 페이지는 매물on 확장 프로그램의 '지도보기' 버튼으로 열어야 동작합니다.", true);
+          return;
         }
+        const response = await sendToExtension({ type: "maemulon-ready" });
+        if (response && Array.isArray(response.list)) renderListings(response.list);
+        else setStatus("확장 프로그램에서 매물 데이터를 받아오지 못했습니다.", true);
       });
     }
 
