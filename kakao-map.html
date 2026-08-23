@@ -94,6 +94,20 @@
     cursor: pointer;
   }
   #layerControl button.active { background: var(--toss-blue); color: #fff; border-color: var(--toss-blue); }
+  /* v2.112: 아이콘 버튼(현재위치/확대/축소/거리재기/면적재기/반경재기) */
+  #layerControl .icon-btn { width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center; }
+  #layerControl .icon-btn img { width: 15px; height: 15px; display: block; }
+  #layerControl .icon-btn.active img { filter: brightness(0) invert(1); }
+  #layerControl .layer-btns { flex-wrap: wrap; }
+  .measure-label {
+    background: #191f28;
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 0 1px 4px rgba(25, 31, 40, 0.2);
+  }
 </style>
 </head>
 <body>
@@ -116,7 +130,12 @@
     <label class="layer-row"><input type="checkbox" id="chkDistrict" checked /> 지적도</label>
     <label class="layer-row"><input type="checkbox" id="chkTerrain" /> 지형도</label>
     <div class="layer-btns">
-      <button type="button" id="btnLocate">현재위치</button>
+      <button type="button" id="btnLocate" class="icon-btn" title="현재위치"><img id="iconLocate" alt="현재위치" /></button>
+      <button type="button" id="btnZoomIn" class="icon-btn" title="확대"><img id="iconZoomIn" alt="확대" /></button>
+      <button type="button" id="btnZoomOut" class="icon-btn" title="축소"><img id="iconZoomOut" alt="축소" /></button>
+      <button type="button" id="btnDistance" class="icon-btn" title="거리재기"><img id="iconDistance" alt="거리재기" /></button>
+      <button type="button" id="btnArea" class="icon-btn" title="면적재기"><img id="iconArea" alt="면적재기" /></button>
+      <button type="button" id="btnRadius" class="icon-btn" title="반경재기"><img id="iconRadius" alt="반경재기" /></button>
       <button type="button" id="btnRoadview">로드뷰(선택)</button>
     </div>
   </div>
@@ -140,7 +159,24 @@
     const DEFAULT_MAP_LNG = 127.0287;
     const DEFAULT_MAP_LEVEL = 4;
 
+    // v2.112: 현재위치/확대/축소/거리재기/면적재기/반경재기 아이콘(사용자 제공 PNG를 base64로 임베드).
+    const ICONS = {
+      locate: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAANDSURBVEjH7ZRdSFNhGMf/745zZ+6jWlb2wai0kxarC6lopmFEJTIhzCXWRWEDr8IgojCEihAiqouu+rgJHC1dRBoWiZbRSMQilhNnXyxKTV3hWZ4zt52niwUea0YXddfv7uX9PQ/v+7zv8wD/+Rd4GACcMgBHCg9TDbkKgZOG6Z2ZaGYu/QxwMD9fpw8AGE2MYwKRBDCAOr2fd7CkoYbNDLeRn1O062Xg8aFw/kPT0D5gYeMOMbN36zXgJa+J2RJ+ZqNZEgAiZ0qQKVJyaTL9RMQ+GFO0BBYTtGaf3HAkw9jGRJEzJdQRaeq7l6MSwIg96JlAf9wCszI+CMy3hhDemNfyAsIuPDiIOPNiLyEVfh4QnV3kJIfikj3U5wOAPp+HXLJDcVIXic6kNUsRmwBcxV1ItI0V14/qV5QAwIqSUX1x/TYm0V1c/WGlpM4APK86Fygll9x4HLhnv95c7a32Xm++Zwcaj7vkUjoXeF6VNFPUYNkUENw0kWfBdt1C95M1g5febogqwFsNsz45EHdvb2jFRF5wE9zLpqajOFWCgqX6Lzs/rjMmyro3XGk/86bU9zVdE1cGIoZsyth9mxX3LhnSfB5cHPi2ujeU4gTUZcBwlMOX92vtwEFjDJl6pgMyEcKQsToCe8VrZA9XGPaT6vlVRVT+6KP/bKpfoUjMzWriMG95n4+MWyJWjEkUpeiYZMWWCBn7fPOWc8hqEnNRlDJB/rPWgaJwDiTu1eZHFuF8Tk/BXF7Lawvm5vQI5x9ZXm2WuBwUhVsH8p+lTBBKB4Ruc38Y7dFPVYWBRbUrvbo7ujsrvYtqCwOfqtqjYZj7he6kmZJ6HrjgPEoO5SK5j13mJ+cAwOScy7z72EVyKEfpgjNpzfITKwC4UAY966DO0wukd20A8K5tgdR5uoP0rAyuH9Y0qm70sHJUapoTwzuD91vQH7ek8dHxEDDfKuvC8bw0B4RdWQ/2cDcVdTP9tp2DsYSWgYut0hp9Uw21Kdv5NwNlPL/DNLIvjqzGHaLlTweKn9loUvMm/Sb7oLnxrcYeeyohXnDLV2EQlErKnspQZob/MhNtBLSQTT4rZQPI4AwwwcwBAs5KNrmFksZ//jLfAaRcbFf0un15AAAAAElFTkSuQmCC",
+      zoomIn: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAACISURBVEjH7dKxDcIwEIXhD0TCCgwRWia4ARg1A2SCtDAEKwSKUBgaCCgoRGn8F5ZOst97vjsymTmJLVFFH31UqRpmPdVossBmODxKnQIUKAM03QiBdCng5nle358mVgMJqofvxUGNo9YuiTXnEQmcXur6m+EcTbT//IUfGLtIy49x+VXOZP7CHZOsJ69CUnc0AAAAAElFTkSuQmCC",
+      zoomOut: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAAAmSURBVEjHY2AYBaNgFAwTwIgp5PIft/I9GOqZBtoHo2AUjIJBAwB7XQIEq8kHIAAAAABJRU5ErkJggg==",
+      distance: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAAFYSURBVEjH7ZHBSgJRGIW/e3MsXYWgZRvDyoIo6AGSoIXkogIbRGmXL9ADtOpVeoFauWozy5CQIIooNDDLINtk2oxzW9TGmYmhRdDCb3n+cw//+S8MGfIX6Epf+3G2piunFnC5ehzpXQROq0AxRs8/YJQzztEwHbqGyQrbvhV29n83dW0gytvrL6GgGh957JtMSHiyNSZHXvsfIvIuyr4B6jLINIous0g6wCI2b8QRdLFBDPqlK4AoWZaRZMgTIUKeDJJlskRdl/UIsKwZ0iVjl04wlUy0jbaRTARTdIzddGkGy/L/BQLE7yqhdDh3A3oM5u6hEK604+8eZo8boFGPNk5qRYDK3pdaKzZO65uaRwVXQF+2qOZuzVjzomCL+Se4Lkq11GxtVHMt+q7KwikcqhZRpughAfVtsRnlgWdiHAifgCt1jGEHFAPrCsASq3KLBdeLIUP+A590xmvIpl+BwAAAAABJRU5ErkJggg==",
+      area: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAAHVSURBVEjH7ZO/TxNhGMc/b3u9q/SCIdjAiW25QgcmDE4MTCziwgKjcYCxDERTdjcajQOMMBBGJxOjEwnRgUn/AQsNbehhatPYHKW93t3rAA70hgt7v+PzfPPJ8xMGGghEMPTuy/lSl+nKg9yGkx+C3faOev2rlNbIfH3zIhTw/tPZfDMJup89erS2XoW91J/9s0U7AiP17Mnr5RDAhteIdD4ISykmOd/7XYWxVGa9jluQRnxz1N+J3vUr/QBHgrA0S2JjruUEuLJFBM3q3mZDAFPV0rhXlEjPqD3rDgFtfmjlxxwq6J2py35/pD9QMLPHSTTMmjqzkmvMNmZXcuqMWdNIkj0umKEAIlurlYNh5pyFHsie7MFCb84ZpnKwtRr0BwL5uLAbF1ESWAokYokYWEqCKI0LYefj4RXcU4Eh7nakvjzhcYXhwlUPwHCbeIxOSF20QwH42x/Tz1v8VNUYjogBve8xR22RfrU9xlK/PXBIxXJp/G88gvTMO2sUUZ+HnenL/j0EKjhN2VG3oFkcWqlvUrk5JCEQL13DLp6mQltQBUiji4JOef//KV/jGtK4yYYAJj/7881N0P0nR0/f3j5Txlm0izBSnzwJncF933mggQD+AaR0vJFlEVaaAAAAAElFTkSuQmCC",
+      radius: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAAI6SURBVEjH7ZRNSFRRFMd/70PfvKZMhxqLkWmaTTShghWSFtHCRYkiBU3G7HRhTQtbuJDEhSAtWlS0qYxa9AEGA0KgVKSURYtA0KEPXFjpTIpjjmW+macz77Zo5Qi+2oZ/OItzOed3zzmce2FD/4Gk3IOoGss/bgwF5t+PMmGaipb1a+W49h37MLCpZLk0YwOIq57Mcuvb0zd/uWp0CtFJsYBJ8mWzXv0o73pMLclBqKtdj7Xc/PTiO29BfOxcmRXQ3JmEPmPcn6y/8cJvFJtL2l3bnoYHOkTtVFc7QJs8J4OQ0lVnPh4QHeLVs7XxORXEfG3aVqp6Ll0O6ZrZKrYJeFg73edQ9nya9N92fvXt+rLu/ZGVsDh6HoK6kLJ5twqgr/6qOCGuiJ+HXXUXRGQlN0Ne7Y7ioFSC3lRWnXqzNHNqvLcnSg076gpen93tYBQbwES2iAoZ4A59O+d0lwd3as7XEBqCCqmQiawNwFR0tlsAD+hf+k7xDyfZxXv9GOBe0TEVmyFq2ZSakAFCpJ2zJLa4CeQ7HdIizCopNLsK/EqSEQugmYZpt/E57jZOfmtKA4xYSfyKDaCcNFEBQV3JeKsdRUapo8hbrWSCOkRFmnK7NYr5GgdbRHcnhPQmGYISNMkhHbo7W0TjYMxnR8jZxD8GXe21Ux1ieGBtfM4QkSsjCwHZGw8fSZZZe7UnVkIOm2NyPLzfc3CyMoKMtTrhr15jivnnLZsPPc6/Flc9mXUB//4fbGhDAL8Bvw7pAUYriJEAAAAASUVORK5CYII=",
+    };
+
     const EXT_ID = new URLSearchParams(location.search).get("ext");
+
+    document.getElementById("iconLocate").src = ICONS.locate;
+    document.getElementById("iconZoomIn").src = ICONS.zoomIn;
+    document.getElementById("iconZoomOut").src = ICONS.zoomOut;
+    document.getElementById("iconDistance").src = ICONS.distance;
+    document.getElementById("iconArea").src = ICONS.area;
+    document.getElementById("iconRadius").src = ICONS.radius;
 
     const statusEl = document.getElementById("status");
     function setStatus(text, isError) {
@@ -281,6 +317,184 @@
       });
     }
 
+    // v2.112: 확대/축소 + 거리재기/면적재기/반경재기. 로드뷰 선택 모드와 서로 배타적으로
+    // 동작해야 해서(둘 다 지도 클릭 이벤트를 쓰므로), window.__stopMeasureMode /
+    // window.__stopRoadviewSelecting 라는 작은 전역 훅으로 서로를 꺼준다.
+    function wireMeasureTools() {
+      const btnZoomIn = document.getElementById("btnZoomIn");
+      const btnZoomOut = document.getElementById("btnZoomOut");
+      const btnDistance = document.getElementById("btnDistance");
+      const btnArea = document.getElementById("btnArea");
+      const btnRadius = document.getElementById("btnRadius");
+
+      btnZoomIn.addEventListener("click", () => mapInstance.setLevel(mapInstance.getLevel() - 1));
+      btnZoomOut.addEventListener("click", () => mapInstance.setLevel(mapInstance.getLevel() + 1));
+
+      function distanceMeters(a, b) {
+        const R = 6371000;
+        const toRad = (d) => (d * Math.PI) / 180;
+        const dLat = toRad(b.getLat() - a.getLat());
+        const dLng = toRad(b.getLng() - a.getLng());
+        const lat1 = toRad(a.getLat());
+        const lat2 = toRad(b.getLat());
+        const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(h));
+      }
+      function fmtDist(m) {
+        return m >= 1000 ? `${(m / 1000).toFixed(2)}km` : `${m.toFixed(1)}m`;
+      }
+      // 폴리곤 면적 계산용: 평균위도를 기준으로 위경도를 근사 평면좌표(m)로 변환 후 신발끈 공식 적용.
+      function toXY(pos, refLat) {
+        const R = 6371000;
+        const toRad = (d) => (d * Math.PI) / 180;
+        return {
+          x: toRad(pos.getLng()) * R * Math.cos(toRad(refLat)),
+          y: toRad(pos.getLat()) * R,
+        };
+      }
+      function polygonAreaM2(points) {
+        if (points.length < 3) return 0;
+        const refLat = points.reduce((s, p) => s + p.getLat(), 0) / points.length;
+        const xy = points.map((p) => toXY(p, refLat));
+        let sum = 0;
+        for (let i = 0; i < xy.length; i++) {
+          const a = xy[i];
+          const b = xy[(i + 1) % xy.length];
+          sum += a.x * b.y - b.x * a.y;
+        }
+        return Math.abs(sum) / 2;
+      }
+      function fmtArea(m2) {
+        return `${m2.toFixed(1)}㎡ (${(m2 / 3.3058).toFixed(1)}평)`;
+      }
+
+      const vertexImage = new kakao.maps.MarkerImage(
+        "data:image/svg+xml;charset=UTF-8," +
+          encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="4" fill="#3182f6" stroke="#fff" stroke-width="1.5"/></svg>'),
+        new kakao.maps.Size(10, 10),
+      );
+
+      // 도구별 상태는 서로 독립적으로 유지한다(도구를 바꿔도 다른 도구가 그려둔
+      // 도형은 지워지지 않고, 같은 도구를 다시 눌렀을 때만 새로 시작하며 지운다).
+      function createToolState() {
+        return { points: [], vertexMarkers: [], shape: null, rubber: null, label: null };
+      }
+      const state = { distance: createToolState(), area: createToolState(), radius: { center: null, circle: null, marker: null, label: null } };
+      let mode = null; // 'distance' | 'area' | 'radius' | null
+      const buttons = { distance: btnDistance, area: btnArea, radius: btnRadius };
+
+      function clearLabel(st) {
+        if (st.label) { st.label.setMap(null); st.label = null; }
+      }
+      function showLabel(st, pos, text) {
+        if (!st.label) {
+          st.label = new kakao.maps.CustomOverlay({ position: pos, xAnchor: 0, yAnchor: 1.4, zIndex: 30 });
+          st.label.setMap(mapInstance);
+        } else {
+          st.label.setPosition(pos);
+        }
+        const el = document.createElement("div");
+        el.className = "measure-label";
+        el.textContent = text;
+        st.label.setContent(el);
+      }
+      function resetLineOrPolyState(st) {
+        st.vertexMarkers.forEach((m) => m.setMap(null));
+        st.vertexMarkers = [];
+        st.points = [];
+        if (st.shape) { st.shape.setMap(null); st.shape = null; }
+        if (st.rubber) { st.rubber.setMap(null); st.rubber = null; }
+        clearLabel(st);
+      }
+      function resetRadiusState() {
+        if (state.radius.circle) { state.radius.circle.setMap(null); state.radius.circle = null; }
+        if (state.radius.marker) { state.radius.marker.setMap(null); state.radius.marker = null; }
+        clearLabel(state.radius);
+        state.radius.center = null;
+      }
+
+      function stopMode() {
+        if (mode && buttons[mode]) buttons[mode].classList.remove("active");
+        mode = null;
+        document.getElementById("map").style.cursor = "";
+      }
+      window.__stopMeasureMode = stopMode;
+
+      function startMode(next) {
+        if (mode === next) { stopMode(); return; }
+        if (window.__stopRoadviewSelecting) window.__stopRoadviewSelecting();
+        stopMode();
+        mode = next;
+        buttons[next].classList.add("active");
+        document.getElementById("map").style.cursor = "crosshair";
+        if (next === "distance" || next === "area") resetLineOrPolyState(state[next]);
+        else resetRadiusState();
+      }
+      btnDistance.addEventListener("click", () => startMode("distance"));
+      btnArea.addEventListener("click", () => startMode("area"));
+      btnRadius.addEventListener("click", () => startMode("radius"));
+
+      kakao.maps.event.addListener(mapInstance, "click", (e) => {
+        if (!mode) return;
+        const pos = e.latLng;
+        if (mode === "radius") {
+          if (!state.radius.center) {
+            state.radius.center = pos;
+            state.radius.marker = new kakao.maps.Marker({ position: pos, image: vertexImage, map: mapInstance });
+            state.radius.circle = new kakao.maps.Circle({
+              center: pos, radius: 1, strokeWeight: 2, strokeColor: "#3182f6", strokeOpacity: 0.9,
+              fillColor: "#3182f6", fillOpacity: 0.15, map: mapInstance,
+            });
+          } else {
+            state.radius.center = null; // 반경 확정, 다음 클릭부터 새 원 시작
+          }
+          return;
+        }
+        const st = state[mode];
+        st.points.push(pos);
+        st.vertexMarkers.push(new kakao.maps.Marker({ position: pos, image: vertexImage, map: mapInstance }));
+        if (mode === "distance") {
+          if (!st.shape) st.shape = new kakao.maps.Polyline({ path: st.points, strokeWeight: 3, strokeColor: "#3182f6", strokeOpacity: 0.9, map: mapInstance });
+          else st.shape.setPath(st.points);
+          if (st.points.length > 1) {
+            let total = 0;
+            for (let i = 1; i < st.points.length; i++) total += distanceMeters(st.points[i - 1], st.points[i]);
+            showLabel(st, pos, `총 거리 ${fmtDist(total)}`);
+          }
+        } else if (mode === "area") {
+          if (st.points.length >= 3) {
+            if (st.shape instanceof kakao.maps.Polygon) {
+              st.shape.setPath(st.points);
+            } else {
+              if (st.shape) st.shape.setMap(null);
+              st.shape = new kakao.maps.Polygon({ path: st.points, strokeWeight: 2, strokeColor: "#3182f6", strokeOpacity: 0.9, fillColor: "#3182f6", fillOpacity: 0.15, map: mapInstance });
+            }
+            showLabel(st, pos, `면적 ${fmtArea(polygonAreaM2(st.points))}`);
+          } else {
+            if (!st.shape) st.shape = new kakao.maps.Polyline({ path: st.points, strokeWeight: 2, strokeColor: "#3182f6", strokeOpacity: 0.9, map: mapInstance });
+            else st.shape.setPath(st.points);
+          }
+        }
+      });
+
+      kakao.maps.event.addListener(mapInstance, "mousemove", (e) => {
+        if (!mode) return;
+        const pos = e.latLng;
+        if (mode === "radius") {
+          if (!state.radius.center || !state.radius.circle) return;
+          const r = distanceMeters(state.radius.center, pos);
+          state.radius.circle.setRadius(r);
+          showLabel(state.radius, pos, `반경 ${fmtDist(r)} (면적 ${fmtArea(Math.PI * r * r)})`);
+        } else {
+          const st = state[mode];
+          if (!st.points.length) return;
+          const path = st.points.concat([pos]);
+          if (!st.rubber) st.rubber = new kakao.maps.Polyline({ path, strokeWeight: 2, strokeColor: "#3182f6", strokeOpacity: 0.5, strokeStyle: "shortdash", map: mapInstance });
+          else st.rubber.setPath(path);
+        }
+      });
+    }
+
     // v2.105: "로드뷰(선택)" - 켜면 도로 위에 파란선(로드뷰 지원 구간)이 표시되고,
     // 그 선을 클릭하면 화면이 왼쪽(지도)/오른쪽(로드뷰) 절반씩 나뉘어 크게 보인다.
     // 로드뷰 사진 안에서 이동/회전하면(position_changed) 지도 위 빨간 점이 같이
@@ -338,12 +552,14 @@
 
       btn.addEventListener("click", () => {
         if (selecting) { stopSelecting(); return; }
+        if (window.__stopMeasureMode) window.__stopMeasureMode();
         selecting = true;
         btn.classList.add("active");
         document.getElementById("map").style.cursor = "crosshair";
         mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.ROADVIEW);
       });
       closeBtn.addEventListener("click", closeRoadview);
+      window.__stopRoadviewSelecting = stopSelecting;
 
       function showRoadviewAt(pos, panoId) {
         const wasHidden = split.style.display !== "flex";
@@ -407,6 +623,7 @@
         mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
         wireLayerControl();
         wireLocateButton();
+        wireMeasureTools();
         wireRoadview();
 
         if (!EXT_ID) {
