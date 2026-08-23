@@ -223,6 +223,10 @@
       if (markers.length) {
         new kakao.maps.MarkerClusterer({ map: mapInstance, markers, averageCenter: true, minLevel: 6 });
         mapInstance.setBounds(bounds);
+        // v2.108: setBounds()만 쓰면 매물 전체가 겨우 다 보이는 정도까지만 줌아웃되어
+        // 지번/땅 모양이 안 보일 만큼 첫 화면이 너무 축소되어 있었음 - 마우스 휠을
+        // 4번 정도 확대한 정도로 화면이 시작되도록 레벨을 4단계 낮춰줌(레벨 1이 한계).
+        mapInstance.setLevel(Math.max(1, mapInstance.getLevel() - 4));
         setStatus(`총 ${markers.length}건 표시됨${failCount ? ` (주소 변환 실패 ${failCount}건 제외)` : ""}.`);
       } else {
         setStatus("지도에 표시할 매물이 없습니다(전체주소가 저장된 매물이 없거나 좌표 변환에 실패했습니다).", true);
@@ -290,11 +294,27 @@
       let roadviewMarker = null;
       let selecting = false;
 
+      // v2.108: [버그 수정 아님, 요청 반영] "빨간 점을 화면 정중앙에 맞추는" 시도가
+      // 아니라, 로드뷰와의 경계선으로부터 왼쪽으로 일정 거리(약 5~7cm) 띄운
+      // 위치에 항상 오도록 지도를 의도적으로 오른쪽으로 치우쳐 센터를 잡는다.
+      const ROADVIEW_MARKER_LEFT_OFFSET_PX = 220; // 화면 96dpi 기준 약 6cm
+
       function relayoutMap() {
         // v2.107: [버그 수정] "resize" 이벤트를 강제로 흘려보내는 방식은 실제로
         // 카카오맵에 아무 효과가 없었음(진짜 리레이아웃 함수가 아님) - 지도
         // 컨테이너 크기가 바뀌었을 때 다시 계산해주는 진짜 함수(map.relayout())로 교체.
         mapInstance.relayout();
+      }
+
+      // v2.108: pos가 지도의 "정중앙"이 아니라, 오른쪽 경계선에서 왼쪽으로
+      // ROADVIEW_MARKER_LEFT_OFFSET_PX만큼 떨어진 지점에 오도록 하는 중심좌표 계산.
+      function roadviewCenterFor(pos) {
+        const mapEl = document.getElementById("map");
+        const w = mapEl.clientWidth;
+        const proj = mapInstance.getProjection();
+        const centerPoint = proj.pointFromCoords(pos);
+        centerPoint.x -= (w / 2 - ROADVIEW_MARKER_LEFT_OFFSET_PX);
+        return proj.coordsFromPoint(centerPoint);
       }
       function stopSelecting() {
         selecting = false;
@@ -330,10 +350,11 @@
           // 레이아웃을 실제로 끝낸 다음 프레임에 다시 계산하도록 미룸.
           requestAnimationFrame(() => {
             relayoutMap();
-            mapInstance.setCenter(pos);
+            mapInstance.setCenter(roadviewCenterFor(pos));
           });
         } else {
           relayoutMap();
+          mapInstance.setCenter(roadviewCenterFor(pos));
         }
         if (!roadview) {
           roadview = new kakao.maps.Roadview(inner);
@@ -344,7 +365,7 @@
             } else {
               roadviewMarker.setPosition(p);
             }
-            mapInstance.panTo(p);
+            mapInstance.panTo(roadviewCenterFor(p));
           });
         }
         roadview.setPanoId(panoId, pos);
