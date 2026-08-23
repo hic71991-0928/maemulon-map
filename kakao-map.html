@@ -291,7 +291,10 @@
       let selecting = false;
 
       function relayoutMap() {
-        kakao.maps.event.trigger(mapInstance, "resize");
+        // v2.107: [버그 수정] "resize" 이벤트를 강제로 흘려보내는 방식은 실제로
+        // 카카오맵에 아무 효과가 없었음(진짜 리레이아웃 함수가 아님) - 지도
+        // 컨테이너 크기가 바뀌었을 때 다시 계산해주는 진짜 함수(map.relayout())로 교체.
+        mapInstance.relayout();
       }
       function stopSelecting() {
         selecting = false;
