@@ -43,9 +43,9 @@
     border-radius: 6px;
     cursor: pointer;
   }
-  /* v2.100: 지적편집도(지번지도)를 기본값으로 켜둘 때 같이 보여주는 범례
-     (용도지역 색상 - 국토교통부/카카오맵 공통 표준 배색) */
-  #legend {
+  /* v2.101: 색상 범례 박스를 없애고, 카카오 공식 사이트의 "지도유형"
+     체크박스(위성도/지적도/지형도) + "현재위치"/"로드뷰" 버튼을 직접 만들어 대체 */
+  #layerControl {
     position: absolute;
     left: 10px;
     bottom: 24px;
@@ -53,14 +53,54 @@
     border: 1px solid var(--toss-line);
     border-radius: 8px;
     padding: 8px 10px;
-    font-size: 11.5px;
-    color: var(--toss-text-sub);
+    font-size: 12px;
+    color: var(--toss-text);
     box-shadow: 0 1px 4px rgba(25, 31, 40, 0.12);
     z-index: 10;
   }
-  #legend .legend-title { font-weight: 700; color: var(--toss-text); margin-bottom: 4px; }
-  #legend .legend-row { display: flex; align-items: center; gap: 5px; margin: 2px 0; }
-  #legend .legend-swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+  #layerControl .layer-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; cursor: pointer; }
+  #layerControl .layer-row input { margin: 0; }
+  #layerControl .layer-btns { display: flex; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--toss-line); }
+  #layerControl button {
+    border: 1px solid var(--toss-line);
+    background: #fff;
+    color: var(--toss-text);
+    font-size: 11.5px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #layerControl button.active { background: var(--toss-blue); color: #fff; border-color: var(--toss-blue); }
+  #roadviewPanel {
+    position: absolute;
+    right: 10px;
+    top: 47px;
+    width: 320px;
+    height: 240px;
+    background: #ddd;
+    border: 1px solid var(--toss-line);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(25, 31, 40, 0.2);
+    z-index: 20;
+    display: none;
+  }
+  #roadviewClose {
+    position: absolute;
+    right: 12px;
+    top: 51px;
+    z-index: 21;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    display: none;
+  }
 </style>
 </head>
 <body>
@@ -69,16 +109,17 @@
     <span id="status">부모 창(확장 프로그램)에서 매물 데이터를 기다리는 중...</span>
   </div>
   <div id="map"></div>
-  <div id="legend">
-    <div class="legend-title">지적편집도 범례(용도지역)</div>
-    <div class="legend-row"><span class="legend-swatch" style="background:#ffe89e"></span>주거지역</div>
-    <div class="legend-row"><span class="legend-swatch" style="background:#ff9e9e"></span>상업지역</div>
-    <div class="legend-row"><span class="legend-swatch" style="background:#b7c8e8"></span>공업지역</div>
-    <div class="legend-row"><span class="legend-swatch" style="background:#b8e6b0"></span>녹지지역</div>
-    <div class="legend-row"><span class="legend-swatch" style="background:#e0d8b0"></span>관리지역</div>
-    <div class="legend-row"><span class="legend-swatch" style="background:#8fc98f"></span>농림지역</div>
-    <div class="legend-row"><span class="legend-swatch" style="background:#7fb3b3"></span>자연환경보전지역</div>
+  <div id="layerControl">
+    <label class="layer-row"><input type="checkbox" id="chkSkyview" /> 위성도</label>
+    <label class="layer-row"><input type="checkbox" id="chkDistrict" checked /> 지적도</label>
+    <label class="layer-row"><input type="checkbox" id="chkTerrain" /> 지형도</label>
+    <div class="layer-btns">
+      <button type="button" id="btnLocate">현재위치</button>
+      <button type="button" id="btnRoadview">로드뷰(선택)</button>
+    </div>
   </div>
+  <div id="roadviewPanel"></div>
+  <button type="button" id="roadviewClose">✕</button>
   <script>
     // v2.99: 이 페이지는 GitHub Pages 같은 외부 호스팅에 올려서 새 탭/새 창으로 열고,
     // 매물on 확장 프로그램(map.html)이 window.opener.postMessage로 매물 데이터를
@@ -182,6 +223,87 @@
       }
     }
 
+    // v2.101: 카카오 공식 사이트의 "지도유형" 체크박스(위성도/지적도/지형도)를
+    // 직접 구현. 위성도는 기본지도(ROADMAP)<->위성+라벨(HYBRID) 전환, 지적도/지형도는
+    // 오버레이로 켜고 끈다(지적도는 기본 체크 상태로 시작).
+    function wireLayerControl() {
+      const chkSkyview = document.getElementById("chkSkyview");
+      const chkDistrict = document.getElementById("chkDistrict");
+      const chkTerrain = document.getElementById("chkTerrain");
+      chkSkyview.addEventListener("change", () => {
+        mapInstance.setMapTypeId(chkSkyview.checked ? kakao.maps.MapTypeId.HYBRID : kakao.maps.MapTypeId.ROADMAP);
+      });
+      chkDistrict.addEventListener("change", () => {
+        if (chkDistrict.checked) mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
+        else mapInstance.removeOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
+      });
+      chkTerrain.addEventListener("change", () => {
+        if (chkTerrain.checked) mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.TERRAIN);
+        else mapInstance.removeOverlayMapTypeId(kakao.maps.MapTypeId.TERRAIN);
+      });
+    }
+
+    // v2.101: "현재위치" 버튼 - 브라우저 위치 정보로 지도를 그 위치로 이동하고 마커 표시
+    function wireLocateButton() {
+      let locateMarker = null;
+      document.getElementById("btnLocate").addEventListener("click", () => {
+        if (!navigator.geolocation) { alert("이 브라우저에서는 현재 위치를 지원하지 않습니다."); return; }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const loc = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+            mapInstance.setCenter(loc);
+            mapInstance.setLevel(4);
+            if (locateMarker) locateMarker.setMap(null);
+            locateMarker = new kakao.maps.Marker({ position: loc, map: mapInstance });
+          },
+          () => alert("현재 위치를 가져오지 못했습니다. 위치 권한을 허용해주세요."),
+        );
+      });
+    }
+
+    // v2.101: "로드뷰(선택)" 버튼 - 누르면 다음 지도 클릭 지점의 로드뷰를 오른쪽 위 작은
+    // 창으로 띄운다(버튼을 다시 누르거나 ✕를 누르면 선택 모드/로드뷰 창 종료).
+    function wireRoadview() {
+      const btn = document.getElementById("btnRoadview");
+      const panel = document.getElementById("roadviewPanel");
+      const closeBtn = document.getElementById("roadviewClose");
+      const roadviewClient = new kakao.maps.RoadviewClient();
+      let roadview = null;
+      let selecting = false;
+
+      function stopSelecting() {
+        selecting = false;
+        btn.classList.remove("active");
+        document.getElementById("map").style.cursor = "";
+      }
+      function closeRoadview() {
+        panel.style.display = "none";
+        closeBtn.style.display = "none";
+        stopSelecting();
+      }
+
+      btn.addEventListener("click", () => {
+        if (selecting) { stopSelecting(); return; }
+        selecting = true;
+        btn.classList.add("active");
+        document.getElementById("map").style.cursor = "crosshair";
+      });
+      closeBtn.addEventListener("click", closeRoadview);
+
+      kakao.maps.event.addListener(mapInstance, "click", (mouseEvent) => {
+        if (!selecting) return;
+        const pos = mouseEvent.latLng;
+        roadviewClient.getNearestPanoId(pos, 50, (panoId) => {
+          if (!panoId) { alert("이 위치는 로드뷰를 지원하지 않습니다."); stopSelecting(); return; }
+          panel.style.display = "block";
+          closeBtn.style.display = "block";
+          if (!roadview) roadview = new kakao.maps.Roadview(panel);
+          roadview.setPanoId(panoId, pos);
+          stopSelecting();
+        });
+      });
+    }
+
     async function main() {
       try {
         await loadKakaoSdk();
@@ -194,10 +316,11 @@
           center: new kakao.maps.LatLng(36.3504, 127.3845), // 매물이 없을 때 기본 중심(대전)
           level: 8,
         });
-        // v2.100: 지도/스카이뷰 전환 + 지적편집도(지번) 켜기/끄기 컨트롤 표시
-        mapInstance.addControl(new kakao.maps.MapTypeControl(), kakao.maps.ControlPosition.TOPRIGHT);
-        // v2.100: 기본값을 지적편집도(지번지도)로 고정해서 켜둠
+        // v2.101: 기본값을 지적편집도(지번지도)로 고정해서 켜둠(체크박스도 기본 체크)
         mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
+        wireLayerControl();
+        wireLocateButton();
+        wireRoadview();
         window.addEventListener("message", (e) => {
           if (e.data && e.data.type === "maemulon-listings") {
             renderListings(e.data.list || []);
