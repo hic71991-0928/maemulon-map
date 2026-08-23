@@ -94,11 +94,45 @@
     cursor: pointer;
   }
   #layerControl button.active { background: var(--toss-blue); color: #fff; border-color: var(--toss-blue); }
-  /* v2.112: 아이콘 버튼(현재위치/확대/축소/거리재기/면적재기/반경재기) */
-  #layerControl .icon-btn { width: 26px; height: 26px; padding: 0; display: flex; align-items: center; justify-content: center; }
-  #layerControl .icon-btn img { width: 15px; height: 15px; display: block; }
-  #layerControl .icon-btn.active img { filter: brightness(0) invert(1); }
-  #layerControl .layer-btns { flex-wrap: wrap; }
+  /* v2.113: 아이콘 버튼들을 지도 우측 상단에 세로로 고정 배치(지도 노출 영역이
+     나중에 줄어들어도 위치/크기가 변하지 않도록 position:fixed 사용). */
+  #mapToolbar {
+    position: fixed;
+    top: 47px;
+    right: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 20;
+  }
+  .toolbar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: #fff;
+    border: 1px solid var(--toss-line);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 1px 6px rgba(25, 31, 40, 0.15);
+  }
+  .toolbar-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  .toolbar-btn:hover { background: var(--toss-bg); }
+  .toolbar-btn img { width: 28px; height: 28px; display: block; pointer-events: none; }
+  .toolbar-btn.active { background: var(--toss-blue); }
+  .toolbar-btn.active img { filter: brightness(0) invert(1); }
+  .toolbar-btn-text { font-size: 11px; color: var(--toss-text); font-family: inherit; }
+  .toolbar-btn-text.active { color: #fff; }
   .measure-label {
     background: #191f28;
     color: #fff;
@@ -107,6 +141,30 @@
     border-radius: 6px;
     white-space: nowrap;
     box-shadow: 0 1px 4px rgba(25, 31, 40, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .measure-label .measure-close {
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    border-radius: 50%;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    flex: none;
+  }
+  .segment-label {
+    background: rgba(25, 31, 40, 0.8);
+    color: #fff;
+    font-size: 10.5px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
   }
 </style>
 </head>
@@ -129,14 +187,28 @@
     <label class="layer-row"><input type="checkbox" id="chkSkyview" /> 위성도</label>
     <label class="layer-row"><input type="checkbox" id="chkDistrict" checked /> 지적도</label>
     <label class="layer-row"><input type="checkbox" id="chkTerrain" /> 지형도</label>
-    <div class="layer-btns">
-      <button type="button" id="btnLocate" class="icon-btn" title="현재위치"><img id="iconLocate" alt="현재위치" /></button>
-      <button type="button" id="btnZoomIn" class="icon-btn" title="확대"><img id="iconZoomIn" alt="확대" /></button>
-      <button type="button" id="btnZoomOut" class="icon-btn" title="축소"><img id="iconZoomOut" alt="축소" /></button>
-      <button type="button" id="btnDistance" class="icon-btn" title="거리재기"><img id="iconDistance" alt="거리재기" /></button>
-      <button type="button" id="btnArea" class="icon-btn" title="면적재기"><img id="iconArea" alt="면적재기" /></button>
-      <button type="button" id="btnRadius" class="icon-btn" title="반경재기"><img id="iconRadius" alt="반경재기" /></button>
-      <button type="button" id="btnRoadview">로드뷰(선택)</button>
+  </div>
+  <!-- v2.113: 아이콘 버튼 전부를 지도 우측 상단, 세로 1열로 고정 배치.
+       #mapWrap/#map의 크기가 나중에 줄어들어도(다른 메뉴가 추가되어도) 이
+       툴바는 화면 기준(position:fixed)으로 항상 같은 위치/크기를 유지한다. -->
+  <div id="mapToolbar">
+    <div class="toolbar-group">
+      <button type="button" id="btnLocate" class="toolbar-btn" title="현재위치"><img id="iconLocate" alt="현재위치" /></button>
+      <button type="button" id="btnHome" class="toolbar-btn" title="처음위치"><img id="iconHome" alt="처음위치" /></button>
+      <button type="button" id="btnRoadview" class="toolbar-btn toolbar-btn-text" title="로드뷰(선택)">로드뷰</button>
+    </div>
+    <div class="toolbar-group">
+      <button type="button" id="btnZoomIn" class="toolbar-btn" title="확대"><img id="iconZoomIn" alt="확대" /></button>
+      <button type="button" id="btnZoomOut" class="toolbar-btn" title="축소"><img id="iconZoomOut" alt="축소" /></button>
+    </div>
+    <div class="toolbar-group">
+      <button type="button" id="btnDistance" class="toolbar-btn" title="거리재기"><img id="iconDistance" alt="거리재기" /></button>
+      <button type="button" id="btnArea" class="toolbar-btn" title="면적재기"><img id="iconArea" alt="면적재기" /></button>
+      <button type="button" id="btnRadius" class="toolbar-btn" title="반경재기"><img id="iconRadius" alt="반경재기" /></button>
+    </div>
+    <div class="toolbar-group">
+      <button type="button" id="btnCalculator" class="toolbar-btn" title="계산기"><img id="iconCalculator" alt="계산기" /></button>
+      <button type="button" id="btnRealPrice" class="toolbar-btn" title="실거래가"><img id="iconRealPrice" alt="실거래가" /></button>
     </div>
   </div>
   <script>
@@ -159,24 +231,38 @@
     const DEFAULT_MAP_LNG = 127.0287;
     const DEFAULT_MAP_LEVEL = 4;
 
-    // v2.112: 현재위치/확대/축소/거리재기/면적재기/반경재기 아이콘(사용자 제공 PNG를 base64로 임베드).
+    // v2.113: 아이콘 6개(48x48 고해상도판으로 교체) + 계산기/실거래가 아이콘(사용자 제공
+    // PNG, base64 임베드) + 처음위치 아이콘(제공 파일이 없어 같은 회색 라인 스타일로 직접 제작).
     const ICONS = {
-      locate: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAANDSURBVEjH7ZRdSFNhGMf/745zZ+6jWlb2wai0kxarC6lopmFEJTIhzCXWRWEDr8IgojCEihAiqouu+rgJHC1dRBoWiZbRSMQilhNnXyxKTV3hWZ4zt52niwUea0YXddfv7uX9PQ/v+7zv8wD/+Rd4GACcMgBHCg9TDbkKgZOG6Z2ZaGYu/QxwMD9fpw8AGE2MYwKRBDCAOr2fd7CkoYbNDLeRn1O062Xg8aFw/kPT0D5gYeMOMbN36zXgJa+J2RJ+ZqNZEgAiZ0qQKVJyaTL9RMQ+GFO0BBYTtGaf3HAkw9jGRJEzJdQRaeq7l6MSwIg96JlAf9wCszI+CMy3hhDemNfyAsIuPDiIOPNiLyEVfh4QnV3kJIfikj3U5wOAPp+HXLJDcVIXic6kNUsRmwBcxV1ItI0V14/qV5QAwIqSUX1x/TYm0V1c/WGlpM4APK86Fygll9x4HLhnv95c7a32Xm++Zwcaj7vkUjoXeF6VNFPUYNkUENw0kWfBdt1C95M1g5febogqwFsNsz45EHdvb2jFRF5wE9zLpqajOFWCgqX6Lzs/rjMmyro3XGk/86bU9zVdE1cGIoZsyth9mxX3LhnSfB5cHPi2ujeU4gTUZcBwlMOX92vtwEFjDJl6pgMyEcKQsToCe8VrZA9XGPaT6vlVRVT+6KP/bKpfoUjMzWriMG95n4+MWyJWjEkUpeiYZMWWCBn7fPOWc8hqEnNRlDJB/rPWgaJwDiTu1eZHFuF8Tk/BXF7Lawvm5vQI5x9ZXm2WuBwUhVsH8p+lTBBKB4Ruc38Y7dFPVYWBRbUrvbo7ujsrvYtqCwOfqtqjYZj7he6kmZJ6HrjgPEoO5SK5j13mJ+cAwOScy7z72EVyKEfpgjNpzfITKwC4UAY966DO0wukd20A8K5tgdR5uoP0rAyuH9Y0qm70sHJUapoTwzuD91vQH7ek8dHxEDDfKuvC8bw0B4RdWQ/2cDcVdTP9tp2DsYSWgYut0hp9Uw21Kdv5NwNlPL/DNLIvjqzGHaLlTweKn9loUvMm/Sb7oLnxrcYeeyohXnDLV2EQlErKnspQZob/MhNtBLSQTT4rZQPI4AwwwcwBAs5KNrmFksZ//jLfAaRcbFf0un15AAAAAElFTkSuQmCC",
-      zoomIn: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAACISURBVEjH7dKxDcIwEIXhD0TCCgwRWia4ARg1A2SCtDAEKwSKUBgaCCgoRGn8F5ZOst97vjsymTmJLVFFH31UqRpmPdVossBmODxKnQIUKAM03QiBdCng5nle358mVgMJqofvxUGNo9YuiTXnEQmcXur6m+EcTbT//IUfGLtIy49x+VXOZP7CHZOsJ69CUnc0AAAAAElFTkSuQmCC",
-      zoomOut: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAAAmSURBVEjHY2AYBaNgFAwTwIgp5PIft/I9GOqZBtoHo2AUjIJBAwB7XQIEq8kHIAAAAABJRU5ErkJggg==",
-      distance: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAAFYSURBVEjH7ZHBSgJRGIW/e3MsXYWgZRvDyoIo6AGSoIXkogIbRGmXL9ADtOpVeoFauWozy5CQIIooNDDLINtk2oxzW9TGmYmhRdDCb3n+cw//+S8MGfIX6Epf+3G2piunFnC5ehzpXQROq0AxRs8/YJQzztEwHbqGyQrbvhV29n83dW0gytvrL6GgGh957JtMSHiyNSZHXvsfIvIuyr4B6jLINIous0g6wCI2b8QRdLFBDPqlK4AoWZaRZMgTIUKeDJJlskRdl/UIsKwZ0iVjl04wlUy0jbaRTARTdIzddGkGy/L/BQLE7yqhdDh3A3oM5u6hEK604+8eZo8boFGPNk5qRYDK3pdaKzZO65uaRwVXQF+2qOZuzVjzomCL+Se4Lkq11GxtVHMt+q7KwikcqhZRpughAfVtsRnlgWdiHAifgCt1jGEHFAPrCsASq3KLBdeLIUP+A590xmvIpl+BwAAAAABJRU5ErkJggg==",
-      area: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAAHVSURBVEjH7ZO/TxNhGMc/b3u9q/SCIdjAiW25QgcmDE4MTCziwgKjcYCxDERTdjcajQOMMBBGJxOjEwnRgUn/AQsNbehhatPYHKW93t3rAA70hgt7v+PzfPPJ8xMGGghEMPTuy/lSl+nKg9yGkx+C3faOev2rlNbIfH3zIhTw/tPZfDMJup89erS2XoW91J/9s0U7AiP17Mnr5RDAhteIdD4ISykmOd/7XYWxVGa9jluQRnxz1N+J3vUr/QBHgrA0S2JjruUEuLJFBM3q3mZDAFPV0rhXlEjPqD3rDgFtfmjlxxwq6J2py35/pD9QMLPHSTTMmjqzkmvMNmZXcuqMWdNIkj0umKEAIlurlYNh5pyFHsie7MFCb84ZpnKwtRr0BwL5uLAbF1ESWAokYokYWEqCKI0LYefj4RXcU4Eh7nakvjzhcYXhwlUPwHCbeIxOSF20QwH42x/Tz1v8VNUYjogBve8xR22RfrU9xlK/PXBIxXJp/G88gvTMO2sUUZ+HnenL/j0EKjhN2VG3oFkcWqlvUrk5JCEQL13DLp6mQltQBUiji4JOef//KV/jGtK4yYYAJj/7881N0P0nR0/f3j5Txlm0izBSnzwJncF933mggQD+AaR0vJFlEVaaAAAAAElFTkSuQmCC",
-      radius: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwMSE3i5OfcAAAI6SURBVEjH7ZRNSFRRFMd/70PfvKZMhxqLkWmaTTShghWSFtHCRYkiBU3G7HRhTQtbuJDEhSAtWlS0qYxa9AEGA0KgVKSURYtA0KEPXFjpTIpjjmW+macz77Zo5Qi+2oZ/OItzOed3zzmce2FD/4Gk3IOoGss/bgwF5t+PMmGaipb1a+W49h37MLCpZLk0YwOIq57Mcuvb0zd/uWp0CtFJsYBJ8mWzXv0o73pMLclBqKtdj7Xc/PTiO29BfOxcmRXQ3JmEPmPcn6y/8cJvFJtL2l3bnoYHOkTtVFc7QJs8J4OQ0lVnPh4QHeLVs7XxORXEfG3aVqp6Ll0O6ZrZKrYJeFg73edQ9nya9N92fvXt+rLu/ZGVsDh6HoK6kLJ5twqgr/6qOCGuiJ+HXXUXRGQlN0Ne7Y7ioFSC3lRWnXqzNHNqvLcnSg076gpen93tYBQbwES2iAoZ4A59O+d0lwd3as7XEBqCCqmQiawNwFR0tlsAD+hf+k7xDyfZxXv9GOBe0TEVmyFq2ZSakAFCpJ2zJLa4CeQ7HdIizCopNLsK/EqSEQugmYZpt/E57jZOfmtKA4xYSfyKDaCcNFEBQV3JeKsdRUapo8hbrWSCOkRFmnK7NYr5GgdbRHcnhPQmGYISNMkhHbo7W0TjYMxnR8jZxD8GXe21Ux1ieGBtfM4QkSsjCwHZGw8fSZZZe7UnVkIOm2NyPLzfc3CyMoKMtTrhr15jivnnLZsPPc6/Flc9mXUB//4fbGhDAL8Bvw7pAUYriJEAAAAASUVORK5CYII=",
+      locate: "data:image/png;base64,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",
+      home: "data:image/svg+xml;charset=UTF-8," +
+        encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#4e5968" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>'),
+      zoomIn: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwoAIylFQgcAAAINSURBVFjD7da/btNQFAbwn+0kldqoSOUVmLJ3YCuSV2YmZh6BgSfgOZiYEVuldmMoYmRCvAGVqJJITWxfhnsdksit6oJUgfIttu49f+4537mfzQ477PDvI7ttsyQTkk2QKRSo1Rur4fShq3jAFmWr1gS1Ayee4cy5mULWtuo03Bxj0Bl4M3lmqFI79NwrjH0xkxtohHSQAF1c5D3qSuEEzd29OitIJYeydYkBa0uwVK+trtnfvUWx5CydKXJAbgiG8rRaRZsyBs+6uOhMkFAYolEYaTBUrK3nRqjlWKpuCnJbgqBCEBJTTWpK+6xU6b3vFKVS6zI6Z4nWRTpnZZGYqDbGtDcHB8aoFfb8dOXIGIwduTT2yLVaQTk168dBocKJFxbmhgpz1x47Bsde+2HPvtrSvpH3Pq68eiQ49hILo63dicnqPe5+vzlB90X7i+iuIF6kC++2WvTUBF992mrRxZpXjwTnPlsn+Yk3Jrjw1jeHv0k27ZkgTcOsnItjGmXtMgWauhRMzf90TAs5gtxIpTZK1gMjDA1kGhllo3YPqcgMRKkYqJCnkWifA81KKnqS3DLRpAqicrYqGlW1sXAdK7ivVIQydjaoBTQruY6JayF9aO4t1y1yjVZFf6tqvm3fxUH3ResuOV99H3p4dbcoOZTtv89SwJUPpjhzlRoWNlr6n2L367jDDjvcAb8Aitvok+HivcIAAAAASUVORK5CYII=",
+      zoomOut: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwoAIylFQgcAAAB/SURBVFjD7dNBCkIhFIXh35RoU43eo1W1stCRm4rw4hs8iCgRJ1LE+YbqUe4BQURERAa41uLqqEDAD95iFMDF+u1xZmhX5DHgzIXCvVuUcSJwIwM+2ueB0IwFDFi4Ag+OnQf2XSM/U28OsytqT1AASPjBitJL6u/oo4mIiPyGDZg4HwSa3lbgAAAAAElFTkSuQmCC",
+      distance: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwoAIylFQgcAAAQWSURBVFjD7ZZNaBxlGMd/zzuzs5Ov3XRT1zT9iDUpjR9UtNQKpRQL6qGHFrGU4kUQvHipVy+e9CSei6AU7EVE9OClRXIpiqi1SP2oTSrNR/OxTXaTTTY7szPzPh42DdhMzHoQEfO/DLzzPPzf////vO8MbGELW/jvQ+5fOC2AImRQYrRZ84mub12tBMFFiNC0SiEVazStQTfaBLibtLoY9C/eC5b471rkEFPkVX7nY2gSbGiRYIEzPMwHlHBJ7q9MU+AQU+ANpilxm5gM9nT69gwRLg/xJjv4jBIOyaYWrW4gIuCAvI3dNAfF6AEmiDbyON0zJQHtp4rikqQQKQaHGCEnkGyUVJqC5ug1GJP3mULxiLAia+oQQBVDhgZCn75Gg3tDuxkBYIEanzJa+KhHKtlAl7Vde8SlyiKQJ0fMvK5Ip/iyLZzX+RkGqa12tqAgASp86FTd6J0MjR49Ysb0W4UHpShQ0lmFp6VXhu28oK9H5oskRwXWR5yegRhF7HZ7eLzzuGdtu3imqEdtQod0Gui1NXXIG08O2xU1ZryRXZZbZhKsrDcpzSI3afAA78qR7FTWEUXUbbPtsYLBge6k2wrqqumIO1SFhD79KjnLhLjrZynNIlFwzU4lv32nl6XEDAUGyTLFBLCbPkJGKdNLkZA7jUVkp3VJvXhSz0GIarbhsyt8ouoEV7MzuXz9qXKO7zqnOmBP7dBylbuFclu++niY+JKte0EjVCGbYoe5fyEhoc4Soe2irz5wsXju5oVkZWH42KmDJyfPh7fD25PnD548dmphOFm5eaF4buBiX72L0C5RJ0lJOVVBQkSiHn7Qe/XSlet7HusO5165HqHP6h4YnTv7UwZnznRfnx658kKb/6JHotEGt2LqSRak+ZTE9Ni4Fs1FtZgYG2gZJDAobi2ai2s9NjEi9zqkFYKmCgUcHLeSOxG+dLm7vfNmQEDja30L5HsPH//L5fHxyyfCn3OO66z1tEAQAiEhoQmoe3P7F4d+GLn0eX/m+b7AjFRGLsE+s2+Xby+PjP1yYWFxaG5/3QsITbjauymBB3TiS5sTMJv1D2lS/PXM4mz+m4KSrx6twt3ctZywt/zMYiV/7ZHJQ7PZgDZHxcVrhWAQEIxaG1JSeTQaLAVRnLiSgen4txjUxYU7kRNn3Jo/7ZW0i+3WqG0t5OeALjKy5E3wY3bUm6SdGMWs+dwM0yK4rBCQbzzJbq9LIpaA9zYj2A9aIBOXJ9wdI2OjpmZ9qyh/uo4FUEEITIfZYff2D0wU4ohyK9d1AaI8zMjLd30TrciC+qkz0tQRIGI0l+kJ2mZgo6/aP4p1Z+OGwDbNSCVzywzrDUJ8dM39Ju4lIQRkGeK4DNhtUaQVgaEW/iqa+DfkbmELW/i/4g9JntUj455k7wAAAABJRU5ErkJggg==",
+      area: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwoAIylFQgcAAAWvSURBVFjD7ZZLbF3VFYb/tfc+j3t9fe4D25GxoU5FEzkDokSQqIBppMQDl4oSUJWqnSCQiCKVoBaEOiuMimjpwwwiUCulg0p9iBb6CiUgkNIkoqkIoSIWCKlukmL8yH0cX9/z2I/VgQ1S8QVfVZU68T8865z97bXPWv9ewKY2tSnq9vD7JLkETS0sookChlGG4hgtigFEKHMEQy3MIUEFgyjD4zYsPcLr11KfAheQH23AwK6Lfvgtw66LfnIGTxEABkHBwQKGDDMgBfW5h9zqOz8WK8IxLEGRYgASAgYMAh7mDQAA8Ax5XEFWXCq/HyxRH8ZcrSHiBi6LRQIG+TpXhYvq1VmxggG+NhtoBZ0mNB3u9Yg6UhlCPpEc0eNOGUqTlSflzzwkRSeBxHrtDuzB9FFTcKxNMhMf8/+8AiNhegAcI9CoqXkze5pfbe5rlzNDqg5zqHpp4uwH7ZIEAntLeOrzjUPxjhSZaStvCzeuae/+a10fE+AjvAGgBcjc/XMg+VZzci5LGy4zXtpnD0j1whM/er0JoAK5V327sW8+NStON4PU4h4Rnf+GnUu65LAOsAAIDyLQO5b7U52fwnmMmoNxze2eu+ezN6QGCNXbO4d3t7102T2PK9iF2+r9eocXOGjRwxE1AUgQOZnB5ThvX/B30lQC3YepsVvYAiRRbvQZiJT+kl+QcHs6sFIQd63VdYDih1UnAK0w4u9U2zhk+N7Q1gCrNZyhaTVESNsAOyJUgIJYq+qNAcMAQgjOsjrSwNxNd3DgKiFvybdytFrWHOMfdDnUFXGYMhEor4ZaFrBD2gsgAkwNhYWFx8y99vblWoeZQlM8EZ24VkfhKqCUXvWKU5jSNcVF6m9Hf6ocH1pIUO+lTB9k2KeU6pR/PdhS7Pbmke9vyftPimN/g/W/kwOP+zIvYEwt759Xue6LB1+vTgcvXYZRD/cCAIAb7QEQ8SvTV+fux51DI2PYYnw0oQEAN8BDBbmZR4ZLi3O/G/vpA28SMb/c1Y/WAY4S8Hv+lbyvRK3KO9tnRif8kYgq/q1I8ErwmwDwsD8v4LSfkA/duDLz4jsP2fvKD7QL9igB0x9rNNGNKkEAA57UxlkCQTBwDmQZDLLnAAgmEJzVxpMAmCC7LdUd8L9UV4AFAwRo6ykhGQxHwM1gSSCwvBmAIwZDSE9pC+AT2qzLP5hm4CQdsBSznN5+dhzVHDEX8pNoQmdfz4Gf+39ABXkecw6vunX8a9uPvkkx88s02atdvyUvmuP87P7k6PDeRtTELK4qiWRtj+9BogCrltFEOFj9SnL9s9PHX5ru1a6fJoiaKRQX7li6t3H7SsmwxmW/OLnV3KSjcHK1k9O/e7OTHV+DvJWBxS8YGihf98ek87SEe3Aju44BlVsxlD0W75hfTusiE4Gu4Evxgfe5/ZFVxNQJOyzqLkuDjie/qMaSc242Vcg3zGAOgIQgEyQwmXueTtM2cVjX5v1M/ofZkWjQM/yuu9XcVe9PAkU9ml0Hq33gXAZn8K/8AkCpQq4vXcpbq3btl8Nhki7ld/MLcsyZDHACPdp1BYAHwdouQ/vYJWFHRVhAaWXuxOyF1Qtn287qoXaYhu42OYZdwi+i33rs1qxkA8AQ4AqQWXLRG8kcJtwe4alipAfeqD334tqVefA99TmxLymau5wWQWhry7WLhcwicT0AyoAdRW1p5gcuxsFGuW1CVUN0IvrexFmbZhII7JfPnPquNXKqHqampKqtynPVn4wv1XHF9gA4wuAfKqVLpyslqupxrUKqJeVfylfP4GoplkBkz7S9V6+5Xn2mU2AumepM+Rfy9Bsw6pu92nXReigjO5W/5QWCFELX1xBooNBpE1BgjSrcb7PXlBDwuJBFrQAM3dUr/j+j49p0LVtykdama6Psx6Zr2VJr0zWXrWf/m+nawX1qNMemNrWpnvRvNd7S0tdhD6UAAAAASUVORK5CYII=",
+      radius: "data:image/png;base64,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",
+      calculator: "data:image/png;base64,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",
+      realprice: "data:image/png;base64,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",
     };
 
     const EXT_ID = new URLSearchParams(location.search).get("ext");
 
     document.getElementById("iconLocate").src = ICONS.locate;
+    document.getElementById("iconHome").src = ICONS.home;
     document.getElementById("iconZoomIn").src = ICONS.zoomIn;
     document.getElementById("iconZoomOut").src = ICONS.zoomOut;
     document.getElementById("iconDistance").src = ICONS.distance;
     document.getElementById("iconArea").src = ICONS.area;
     document.getElementById("iconRadius").src = ICONS.radius;
+    document.getElementById("iconCalculator").src = ICONS.calculator;
+    document.getElementById("iconRealPrice").src = ICONS.realprice;
+
+    // v2.113: 계산기/실거래가는 우선 URL 새 탭 열기만 연결.
+    const CALCULATOR_URL = "https://xn--989a00af8jnslv3dba.com/";
+    const REAL_PRICE_URL = "https://rt.molit.go.kr/pt/gis/gis.do?srhThingSecd=G&mobileAt=";
+    document.getElementById("btnCalculator").addEventListener("click", () => window.open(CALCULATOR_URL, "_blank"));
+    document.getElementById("btnRealPrice").addEventListener("click", () => window.open(REAL_PRICE_URL, "_blank"));
 
     const statusEl = document.getElementById("status");
     function setStatus(text, isError) {
@@ -317,6 +403,14 @@
       });
     }
 
+    // v2.113: "처음위치" - 지도를 최초 진입 시 기본 위치/줌으로 되돌린다.
+    function wireHomeButton() {
+      document.getElementById("btnHome").addEventListener("click", () => {
+        mapInstance.setCenter(new kakao.maps.LatLng(DEFAULT_MAP_LAT, DEFAULT_MAP_LNG));
+        mapInstance.setLevel(DEFAULT_MAP_LEVEL);
+      });
+    }
+
     // v2.112: 확대/축소 + 거리재기/면적재기/반경재기. 로드뷰 선택 모드와 서로 배타적으로
     // 동작해야 해서(둘 다 지도 클릭 이벤트를 쓰므로), window.__stopMeasureMode /
     // window.__stopRoadviewSelecting 라는 작은 전역 훅으로 서로를 꺼준다.
@@ -377,7 +471,7 @@
       // 도구별 상태는 서로 독립적으로 유지한다(도구를 바꿔도 다른 도구가 그려둔
       // 도형은 지워지지 않고, 같은 도구를 다시 눌렀을 때만 새로 시작하며 지운다).
       function createToolState() {
-        return { points: [], vertexMarkers: [], shape: null, rubber: null, label: null };
+        return { points: [], vertexMarkers: [], shape: null, rubber: null, label: null, segmentLabels: [] };
       }
       const state = { distance: createToolState(), area: createToolState(), radius: { center: null, circle: null, marker: null, label: null } };
       let mode = null; // 'distance' | 'area' | 'radius' | null
@@ -386,7 +480,9 @@
       function clearLabel(st) {
         if (st.label) { st.label.setMap(null); st.label = null; }
       }
-      function showLabel(st, pos, text) {
+      // v2.113: 라벨에 "닫기(×)" 버튼을 함께 넣어, 도구를 다시 클릭하지 않고도
+      // 그 자리에서 바로 측정 결과를 지울 수 있게 한다. onClose는 closeTool()로 연결.
+      function showLabel(st, pos, text, onClose) {
         if (!st.label) {
           st.label = new kakao.maps.CustomOverlay({ position: pos, xAnchor: 0, yAnchor: 1.4, zIndex: 30 });
           st.label.setMap(mapInstance);
@@ -395,8 +491,40 @@
         }
         const el = document.createElement("div");
         el.className = "measure-label";
-        el.textContent = text;
+        const span = document.createElement("span");
+        span.textContent = text;
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "measure-close";
+        closeBtn.textContent = "×";
+        closeBtn.title = "닫기";
+        closeBtn.addEventListener("click", (ev) => { ev.stopPropagation(); onClose(); });
+        el.appendChild(span);
+        el.appendChild(closeBtn);
         st.label.setContent(el);
+      }
+      function clearSegmentLabels(st) {
+        st.segmentLabels.forEach((ov) => ov.setMap(null));
+        st.segmentLabels = [];
+      }
+      // v2.113: [기능 추가] 총 합계뿐 아니라 각 구간(변)의 길이도 그 구간 중점에 작게 표시.
+      function updateSegmentLabels(st, closeLoop) {
+        clearSegmentLabels(st);
+        const pts = st.points;
+        const segCount = closeLoop ? pts.length : pts.length - 1;
+        for (let i = 0; i < segCount; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          const d = distanceMeters(a, b);
+          const mid = new kakao.maps.LatLng((a.getLat() + b.getLat()) / 2, (a.getLng() + b.getLng()) / 2);
+          const ov = new kakao.maps.CustomOverlay({ position: mid, zIndex: 25 });
+          const el = document.createElement("div");
+          el.className = "segment-label";
+          el.textContent = fmtDist(d);
+          ov.setContent(el);
+          ov.setMap(mapInstance);
+          st.segmentLabels.push(ov);
+        }
       }
       function resetLineOrPolyState(st) {
         st.vertexMarkers.forEach((m) => m.setMap(null));
@@ -405,12 +533,20 @@
         if (st.shape) { st.shape.setMap(null); st.shape = null; }
         if (st.rubber) { st.rubber.setMap(null); st.rubber = null; }
         clearLabel(st);
+        clearSegmentLabels(st);
       }
       function resetRadiusState() {
         if (state.radius.circle) { state.radius.circle.setMap(null); state.radius.circle = null; }
         if (state.radius.marker) { state.radius.marker.setMap(null); state.radius.marker = null; }
         clearLabel(state.radius);
         state.radius.center = null;
+      }
+      // v2.113: [기능 추가] 라벨의 "×" 버튼이나 도구를 다시 눌렀을 때, 해당 도구의
+      // 도형/라벨을 완전히 지운다(측정 중이었다면 모드도 함께 종료).
+      function closeTool(name) {
+        if (mode === name) stopMode();
+        if (name === "radius") resetRadiusState();
+        else resetLineOrPolyState(state[name]);
       }
 
       function stopMode() {
@@ -459,7 +595,8 @@
           if (st.points.length > 1) {
             let total = 0;
             for (let i = 1; i < st.points.length; i++) total += distanceMeters(st.points[i - 1], st.points[i]);
-            showLabel(st, pos, `총 거리 ${fmtDist(total)}`);
+            showLabel(st, pos, `총 거리 ${fmtDist(total)}`, () => closeTool("distance"));
+            updateSegmentLabels(st, false);
           }
         } else if (mode === "area") {
           if (st.points.length >= 3) {
@@ -469,7 +606,8 @@
               if (st.shape) st.shape.setMap(null);
               st.shape = new kakao.maps.Polygon({ path: st.points, strokeWeight: 2, strokeColor: "#3182f6", strokeOpacity: 0.9, fillColor: "#3182f6", fillOpacity: 0.15, map: mapInstance });
             }
-            showLabel(st, pos, `면적 ${fmtArea(polygonAreaM2(st.points))}`);
+            showLabel(st, pos, `면적 ${fmtArea(polygonAreaM2(st.points))}`, () => closeTool("area"));
+            updateSegmentLabels(st, true);
           } else {
             if (!st.shape) st.shape = new kakao.maps.Polyline({ path: st.points, strokeWeight: 2, strokeColor: "#3182f6", strokeOpacity: 0.9, map: mapInstance });
             else st.shape.setPath(st.points);
@@ -484,7 +622,7 @@
           if (!state.radius.center || !state.radius.circle) return;
           const r = distanceMeters(state.radius.center, pos);
           state.radius.circle.setRadius(r);
-          showLabel(state.radius, pos, `반경 ${fmtDist(r)} (면적 ${fmtArea(Math.PI * r * r)})`);
+          showLabel(state.radius, pos, `반경 ${fmtDist(r)} (면적 ${fmtArea(Math.PI * r * r)})`, () => closeTool("radius"));
         } else {
           const st = state[mode];
           if (!st.points.length) return;
@@ -623,6 +761,7 @@
         mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
         wireLayerControl();
         wireLocateButton();
+        wireHomeButton();
         wireMeasureTools();
         wireRoadview();
 
