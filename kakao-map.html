@@ -23,6 +23,17 @@
     color: var(--toss-text-sub);
   }
   #topbar strong { color: var(--toss-text); }
+  /* v2.115: 지금 보고 있는 페이지가 최신 파일인지 눈으로 바로 확인할 수 있도록
+     버전 배지를 눈에 띄게 표시(GitHub Pages/브라우저 캐시로 옛날 파일이 계속
+     보이는 문제를 사용자가 직접 구분할 수 있게 하기 위함). */
+  #buildTag {
+    background: #f04452;
+    color: #fff;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
   #status.error { color: #f04452; }
   /* v2.105: 로드뷰를 떠 있는 작은 팝업 대신, 지도 옆에 화면을 절반씩 나눠 크게
      보여주는 방식으로 변경(밸류맵 등 참고 사이트 방식). */
@@ -156,6 +167,7 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
+    <span id="buildTag">v2.115</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <div id="mapWrap">
@@ -473,6 +485,7 @@
       }
       const state = { distance: createToolState(), area: createToolState(), radius: { center: null, circle: null, marker: null, label: null } };
       let mode = null; // 'distance' | 'area' | 'radius' | null
+      let suppressMapClick = false; // v2.115: 닫기(×) 버튼 클릭이 지도 클릭으로 새어나가 점이 추가되는 것을 막는 플래그
       const buttons = { distance: btnDistance, area: btnArea, radius: btnRadius };
 
       function clearLabel(st) {
@@ -496,6 +509,13 @@
         closeBtn.className = "measure-close";
         closeBtn.textContent = "×";
         closeBtn.title = "닫기";
+        // v2.115: [버그 수정] 반경재기는 X를 눌러도 잘 꺼지는데 거리재기/면적재기는 안
+        // 꺼지는 문제 - 카카오맵이 "클릭"을 판정하는 시점이 브라우저의 click 이벤트보다
+        // 이를 수 있어서(mousedown 시점에 이미 지도쪽에서 클릭으로 처리해버림),
+        // click에서만 stopPropagation해서는 늦을 수 있음. mousedown 단계에서부터
+        // suppressMapClick 플래그를 세워, 지도의 click 핸들러 맨 앞에서 이를 확인해
+        // 걸러내는 이중 방어 장치를 추가.
+        closeBtn.addEventListener("mousedown", (ev) => { ev.stopPropagation(); suppressMapClick = true; });
         closeBtn.addEventListener("click", (ev) => { ev.stopPropagation(); onClose(); });
         el.appendChild(span);
         el.appendChild(closeBtn);
@@ -569,6 +589,7 @@
       btnRadius.addEventListener("click", () => startMode("radius"));
 
       kakao.maps.event.addListener(mapInstance, "click", (e) => {
+        if (suppressMapClick) { suppressMapClick = false; return; }
         if (!mode) return;
         const pos = e.latLng;
         if (mode === "radius") {
