@@ -317,8 +317,21 @@
       closeBtn.addEventListener("click", closeRoadview);
 
       function showRoadviewAt(pos, panoId) {
+        const wasHidden = split.style.display !== "flex";
         split.style.display = "flex";
-        relayoutMap();
+        if (wasHidden) {
+          // v2.106: [버그 수정] 화면을 절반으로 나누자마자(display:flex) 바로
+          // 리레이아웃/센터 이동을 하면, 브라우저가 아직 실제 레이아웃(폭 변경)을
+          // 반영하기 전이라 카카오맵이 "옛날 넓이" 기준으로 계산해서 빨간 점이
+          // 화면 중앙이 아니라 오른쪽 경계 쪽에 쏠려 보이던 문제 - 브라우저가
+          // 레이아웃을 실제로 끝낸 다음 프레임에 다시 계산하도록 미룸.
+          requestAnimationFrame(() => {
+            relayoutMap();
+            mapInstance.setCenter(pos);
+          });
+        } else {
+          relayoutMap();
+        }
         if (!roadview) {
           roadview = new kakao.maps.Roadview(inner);
           kakao.maps.event.addListener(roadview, "position_changed", () => {
