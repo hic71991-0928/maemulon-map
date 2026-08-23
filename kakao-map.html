@@ -66,39 +66,13 @@
     border-radius: 6px;
     cursor: pointer;
   }
-  /* v2.101: 색상 범례 박스를 없애고, 카카오 공식 사이트의 "지도유형"
-     체크박스(위성도/지적도/지형도) + "현재위치"/"로드뷰" 버튼을 직접 만들어 대체 */
-  #layerControl {
-    position: absolute;
-    left: 10px;
-    bottom: 24px;
-    background: #fff;
-    border: 1px solid var(--toss-line);
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 12px;
-    color: var(--toss-text);
-    box-shadow: 0 1px 4px rgba(25, 31, 40, 0.12);
-    z-index: 10;
-  }
-  #layerControl .layer-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; cursor: pointer; }
-  #layerControl .layer-row input { margin: 0; }
-  #layerControl .layer-btns { display: flex; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--toss-line); }
-  #layerControl button {
-    border: 1px solid var(--toss-line);
-    background: #fff;
-    color: var(--toss-text);
-    font-size: 11.5px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  #layerControl button.active { background: var(--toss-blue); color: #fff; border-color: var(--toss-blue); }
-  /* v2.113: 아이콘 버튼들을 지도 우측 상단에 세로로 고정 배치(지도 노출 영역이
-     나중에 줄어들어도 위치/크기가 변하지 않도록 position:fixed 사용). */
+  /* v2.114: 아이콘 버튼들을 지도 우측 상단에 세로로 고정 배치(지도 노출 영역이
+     나중에 줄어들어도 위치/크기가 변하지 않도록 position:fixed 사용). 로드뷰를 열면
+     로드뷰 닫기(✕) 버튼이 있는 #roadviewSplitBar(상단 37~69px)와 겹치던 문제 때문에
+     top을 96px로 내려서(버튼 한 칸 이상 여유) 항상 그 아래에서 시작하게 함. */
   #mapToolbar {
     position: fixed;
-    top: 47px;
+    top: 96px;
     right: 14px;
     display: flex;
     flex-direction: column;
@@ -115,6 +89,16 @@
     padding: 6px;
     box-shadow: 0 1px 6px rgba(25, 31, 40, 0.15);
   }
+  /* v2.114: 위성도/지적도/지형도 체크박스를 툴바 안으로 편입(기존 좌측 하단 배치는
+     지도가 커지면서 눈에 안 띈다는 피드백에 따라 이동). */
+  .toolbar-group.checkbox-group {
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--toss-text);
+    gap: 5px;
+  }
+  .toolbar-group.checkbox-group label { display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+  .toolbar-group.checkbox-group input { margin: 0; }
   .toolbar-btn {
     width: 44px;
     height: 44px;
@@ -131,29 +115,30 @@
   .toolbar-btn img { width: 28px; height: 28px; display: block; pointer-events: none; }
   .toolbar-btn.active { background: var(--toss-blue); }
   .toolbar-btn.active img { filter: brightness(0) invert(1); }
-  .toolbar-btn-text { font-size: 11px; color: var(--toss-text); font-family: inherit; }
-  .toolbar-btn-text.active { color: #fff; }
+  .toolbar-btn-text { font-size: 12px; color: var(--toss-text); font-family: inherit; font-weight: 600; border: 1px solid var(--toss-line) !important; }
+  .toolbar-btn-text.active { color: #fff; border-color: var(--toss-blue) !important; }
   .measure-label {
     background: #191f28;
     color: #fff;
-    font-size: 12px;
-    padding: 4px 8px;
+    font-size: 13px;
+    padding: 5px 8px;
     border-radius: 6px;
     white-space: nowrap;
     box-shadow: 0 1px 4px rgba(25, 31, 40, 0.2);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
   }
   .measure-label .measure-close {
     border: none;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.25);
     color: #fff;
-    width: 16px;
-    height: 16px;
-    line-height: 16px;
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
     border-radius: 50%;
-    font-size: 11px;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
     padding: 0;
     flex: none;
@@ -183,19 +168,20 @@
       <div id="roadviewInner"></div>
     </div>
   </div>
-  <div id="layerControl">
-    <label class="layer-row"><input type="checkbox" id="chkSkyview" /> 위성도</label>
-    <label class="layer-row"><input type="checkbox" id="chkDistrict" checked /> 지적도</label>
-    <label class="layer-row"><input type="checkbox" id="chkTerrain" /> 지형도</label>
-  </div>
-  <!-- v2.113: 아이콘 버튼 전부를 지도 우측 상단, 세로 1열로 고정 배치.
-       #mapWrap/#map의 크기가 나중에 줄어들어도(다른 메뉴가 추가되어도) 이
-       툴바는 화면 기준(position:fixed)으로 항상 같은 위치/크기를 유지한다. -->
+  <!-- v2.114: 13개 버튼(현재위치~처음으로) 전부를 지도 우측, 세로 1열로 고정 배치.
+       #mapWrap/#map의 크기가 나중에 줄어들어도(다른 메뉴가 추가되어도) 이 툴바는
+       화면 기준(position:fixed)으로 항상 같은 위치/크기를 유지한다. 로드뷰 닫기(✕)
+       버튼과 겹치지 않도록 top을 충분히 내렸고(CSS 참고), 체크박스도 눈에 잘 띄도록
+       기존 좌측 하단 대신 이 툴바 안으로 옮겼다. -->
   <div id="mapToolbar">
     <div class="toolbar-group">
       <button type="button" id="btnLocate" class="toolbar-btn" title="현재위치"><img id="iconLocate" alt="현재위치" /></button>
-      <button type="button" id="btnHome" class="toolbar-btn" title="처음위치"><img id="iconHome" alt="처음위치" /></button>
       <button type="button" id="btnRoadview" class="toolbar-btn toolbar-btn-text" title="로드뷰(선택)">로드뷰</button>
+    </div>
+    <div class="toolbar-group checkbox-group">
+      <label><input type="checkbox" id="chkSkyview" /> 위성도</label>
+      <label><input type="checkbox" id="chkDistrict" checked /> 지적도</label>
+      <label><input type="checkbox" id="chkTerrain" /> 지형도</label>
     </div>
     <div class="toolbar-group">
       <button type="button" id="btnZoomIn" class="toolbar-btn" title="확대"><img id="iconZoomIn" alt="확대" /></button>
@@ -209,6 +195,9 @@
     <div class="toolbar-group">
       <button type="button" id="btnCalculator" class="toolbar-btn" title="계산기"><img id="iconCalculator" alt="계산기" /></button>
       <button type="button" id="btnRealPrice" class="toolbar-btn" title="실거래가"><img id="iconRealPrice" alt="실거래가" /></button>
+    </div>
+    <div class="toolbar-group">
+      <button type="button" id="btnHome" class="toolbar-btn toolbar-btn-text" title="처음으로">처음으로</button>
     </div>
   </div>
   <script>
@@ -235,8 +224,6 @@
     // PNG, base64 임베드) + 처음위치 아이콘(제공 파일이 없어 같은 회색 라인 스타일로 직접 제작).
     const ICONS = {
       locate: "data:image/png;base64,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",
-      home: "data:image/svg+xml;charset=UTF-8," +
-        encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#4e5968" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>'),
       zoomIn: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwoAIylFQgcAAAINSURBVFjD7da/btNQFAbwn+0kldqoSOUVmLJ3YCuSV2YmZh6BgSfgOZiYEVuldmMoYmRCvAGVqJJITWxfhnsdksit6oJUgfIttu49f+4537mfzQ477PDvI7ttsyQTkk2QKRSo1Rur4fShq3jAFmWr1gS1Ayee4cy5mULWtuo03Bxj0Bl4M3lmqFI79NwrjH0xkxtohHSQAF1c5D3qSuEEzd29OitIJYeydYkBa0uwVK+trtnfvUWx5CydKXJAbgiG8rRaRZsyBs+6uOhMkFAYolEYaTBUrK3nRqjlWKpuCnJbgqBCEBJTTWpK+6xU6b3vFKVS6zI6Z4nWRTpnZZGYqDbGtDcHB8aoFfb8dOXIGIwduTT2yLVaQTk168dBocKJFxbmhgpz1x47Bsde+2HPvtrSvpH3Pq68eiQ49hILo63dicnqPe5+vzlB90X7i+iuIF6kC++2WvTUBF992mrRxZpXjwTnPlsn+Yk3Jrjw1jeHv0k27ZkgTcOsnItjGmXtMgWauhRMzf90TAs5gtxIpTZK1gMjDA1kGhllo3YPqcgMRKkYqJCnkWifA81KKnqS3DLRpAqicrYqGlW1sXAdK7ivVIQydjaoBTQruY6JayF9aO4t1y1yjVZFf6tqvm3fxUH3ResuOV99H3p4dbcoOZTtv89SwJUPpjhzlRoWNlr6n2L367jDDjvcAb8Aitvok+HivcIAAAAASUVORK5CYII=",
       zoomOut: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwoAIylFQgcAAAB/SURBVFjD7dNBCkIhFIXh35RoU43eo1W1stCRm4rw4hs8iCgRJ1LE+YbqUe4BQURERAa41uLqqEDAD95iFMDF+u1xZmhX5DHgzIXCvVuUcSJwIwM+2ueB0IwFDFi4Ag+OnQf2XSM/U28OsytqT1AASPjBitJL6u/oo4mIiPyGDZg4HwSa3lbgAAAAAElFTkSuQmCC",
       distance: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAQAAAD9CzEMAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAd0SU1FB+oIFwoAIylFQgcAAAQWSURBVFjD7ZZNaBxlGMd/zzuzs5Ov3XRT1zT9iDUpjR9UtNQKpRQL6qGHFrGU4kUQvHipVy+e9CSei6AU7EVE9OClRXIpiqi1SP2oTSrNR/OxTXaTTTY7szPzPh42DdhMzHoQEfO/DLzzPPzf////vO8MbGELW/jvQ+5fOC2AImRQYrRZ84mub12tBMFFiNC0SiEVazStQTfaBLibtLoY9C/eC5b471rkEFPkVX7nY2gSbGiRYIEzPMwHlHBJ7q9MU+AQU+ANpilxm5gM9nT69gwRLg/xJjv4jBIOyaYWrW4gIuCAvI3dNAfF6AEmiDbyON0zJQHtp4rikqQQKQaHGCEnkGyUVJqC5ug1GJP3mULxiLAia+oQQBVDhgZCn75Gg3tDuxkBYIEanzJa+KhHKtlAl7Vde8SlyiKQJ0fMvK5Ip/iyLZzX+RkGqa12tqAgASp86FTd6J0MjR49Ysb0W4UHpShQ0lmFp6VXhu28oK9H5oskRwXWR5yegRhF7HZ7eLzzuGdtu3imqEdtQod0Gui1NXXIG08O2xU1ZryRXZZbZhKsrDcpzSI3afAA78qR7FTWEUXUbbPtsYLBge6k2wrqqumIO1SFhD79KjnLhLjrZynNIlFwzU4lv32nl6XEDAUGyTLFBLCbPkJGKdNLkZA7jUVkp3VJvXhSz0GIarbhsyt8ouoEV7MzuXz9qXKO7zqnOmBP7dBylbuFclu++niY+JKte0EjVCGbYoe5fyEhoc4Soe2irz5wsXju5oVkZWH42KmDJyfPh7fD25PnD548dmphOFm5eaF4buBiX72L0C5RJ0lJOVVBQkSiHn7Qe/XSlet7HusO5165HqHP6h4YnTv7UwZnznRfnx658kKb/6JHotEGt2LqSRak+ZTE9Ni4Fs1FtZgYG2gZJDAobi2ai2s9NjEi9zqkFYKmCgUcHLeSOxG+dLm7vfNmQEDja30L5HsPH//L5fHxyyfCn3OO66z1tEAQAiEhoQmoe3P7F4d+GLn0eX/m+b7AjFRGLsE+s2+Xby+PjP1yYWFxaG5/3QsITbjauymBB3TiS5sTMJv1D2lS/PXM4mz+m4KSrx6twt3ctZywt/zMYiV/7ZHJQ7PZgDZHxcVrhWAQEIxaG1JSeTQaLAVRnLiSgen4txjUxYU7kRNn3Jo/7ZW0i+3WqG0t5OeALjKy5E3wY3bUm6SdGMWs+dwM0yK4rBCQbzzJbq9LIpaA9zYj2A9aIBOXJ9wdI2OjpmZ9qyh/uo4FUEEITIfZYff2D0wU4ohyK9d1AaI8zMjLd30TrciC+qkz0tQRIGI0l+kJ2mZgo6/aP4p1Z+OGwDbNSCVzywzrDUJ8dM39Ju4lIQRkGeK4DNhtUaQVgaEW/iqa+DfkbmELW/i/4g9JntUj455k7wAAAABJRU5ErkJggg==",
@@ -249,7 +236,6 @@
     const EXT_ID = new URLSearchParams(location.search).get("ext");
 
     document.getElementById("iconLocate").src = ICONS.locate;
-    document.getElementById("iconHome").src = ICONS.home;
     document.getElementById("iconZoomIn").src = ICONS.zoomIn;
     document.getElementById("iconZoomOut").src = ICONS.zoomOut;
     document.getElementById("iconDistance").src = ICONS.distance;
@@ -258,11 +244,23 @@
     document.getElementById("iconCalculator").src = ICONS.calculator;
     document.getElementById("iconRealPrice").src = ICONS.realprice;
 
-    // v2.113: 계산기/실거래가는 우선 URL 새 탭 열기만 연결.
+    // v2.114: 계산기/실거래가는 URL 새 창 열기만 연결. 이 페이지 자체가 이미
+    // chrome.windows.create(popup)로 뜬 별도 창이라 window.open(url, "_blank")이
+    // 새 창 대신 같은 창을 덮어써버리는 문제가 있었음 - <a target="_blank"> 클릭을
+    // 흉내내는 방식이 팝업 창 환경에서 더 확실하게 새 창을 띄워서 이 방식으로 교체.
+    function openInNewWindow(url) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
     const CALCULATOR_URL = "https://xn--989a00af8jnslv3dba.com/";
     const REAL_PRICE_URL = "https://rt.molit.go.kr/pt/gis/gis.do?srhThingSecd=G&mobileAt=";
-    document.getElementById("btnCalculator").addEventListener("click", () => window.open(CALCULATOR_URL, "_blank"));
-    document.getElementById("btnRealPrice").addEventListener("click", () => window.open(REAL_PRICE_URL, "_blank"));
+    document.getElementById("btnCalculator").addEventListener("click", () => openInNewWindow(CALCULATOR_URL));
+    document.getElementById("btnRealPrice").addEventListener("click", () => openInNewWindow(REAL_PRICE_URL));
 
     const statusEl = document.getElementById("status");
     function setStatus(text, isError) {
