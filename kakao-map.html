@@ -6,13 +6,24 @@
 <style>
   :root {
     --toss-blue: #3182f6;
+    --toss-blue-dark: #1b64da;
+    --toss-blue-bg: #eef4ff;
     --toss-text: #191f28;
     --toss-text-sub: #4e5968;
+    --toss-text-mute: #8b95a1;
     --toss-bg: #f9fafb;
     --toss-line: #e5e8eb;
+    --toss-line-strong: #d1d6db;
+    --toss-red: #f04452;
+    --toss-red-bg: #fff0f1;
   }
   html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; }
+  /* v2.143: [요청 반영] body를 세로 flex 컬럼으로 바꿔서 상단바들(topbar/filterbar/
+     toolbar)은 내용만큼만 차지하고 지도(#mapWrap)가 나머지 공간을 전부 채우게 함 -
+     예전처럼 height:calc(100% - 37px) 같은 하드코딩된 픽셀 계산에 기대지 않아도 됨. */
+  body { display: flex; flex-direction: column; }
   #topbar {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -35,9 +46,215 @@
     border-radius: 10px;
   }
   #status.error { color: #f04452; }
+
+  /* v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
+     초기화/㎡)와 목록·지도 전환 버튼을 지도창에도 동일하게 구현. 이 페이지는 외부
+     호스팅(GitHub Pages)이라 popup.css를 불러올 수 없어서, 필요한 클래스만 이 페이지
+     스타일에 맞게 복제(popup.css v2.142 기준 - 진한 테두리/파란 배경/32px 높이 통일). */
+  #mapFilterbar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 8px 14px;
+    background: #fff;
+    border-bottom: 1px solid var(--toss-line);
+  }
+  .filter-dropdowns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-dropdown-btn {
+    border: 1.5px solid var(--toss-text-sub);
+    background: var(--toss-blue-bg);
+    color: var(--toss-text);
+    padding: 0 12px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9px;
+    font-size: 13.3px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .filter-dropdown-btn:hover { border-color: var(--toss-blue); }
+  .filter-dropdown-btn .dd-caret { color: var(--toss-text-mute); margin-left: 2px; }
+  .filter-dropdown-btn.filter-dropdown-selected { background: #191f28; border-color: #191f28; color: #fff; }
+  .filter-dropdown-btn.filter-dropdown-selected .dd-caret { color: #fff; }
+  .search-group { display: flex; align-items: center; gap: 4px; }
+  .search-group input[type="text"] {
+    width: 200px;
+    border: 1px solid var(--toss-red);
+    background: var(--toss-red-bg);
+    border-radius: 9px;
+    padding: 0 10px;
+    height: 32px;
+    font-size: 13.3px;
+    color: var(--toss-text);
+    font-family: inherit;
+  }
+  .search-group input[type="text"]:focus { outline: none; border-color: var(--toss-red); background: #fff; }
+  .search-group button {
+    border: none;
+    background: var(--toss-blue);
+    color: #fff;
+    padding: 0 12px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    font-size: 13.3px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .search-group button:hover { background: var(--toss-blue-dark); }
+  .search-group .btn-reset,
+  .search-group .btn-area-unit {
+    background: var(--toss-line);
+    color: var(--toss-text-sub);
+    border: 1.5px solid var(--toss-text-sub);
+  }
+  .search-group .btn-reset:hover,
+  .search-group .btn-area-unit:hover { background: var(--toss-line-strong); }
+
+  /* v2.143: [기능 추가] 정렬(자리만)/목록/지도 3버튼 - 목록창과 지도창에 동일하게 배치 */
+  .view-switch { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .view-switch-btn {
+    border: 1px solid var(--toss-line-strong);
+    background: #fff;
+    color: var(--toss-text-sub);
+    padding: 0 12px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    font-size: 13.3px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .view-switch-btn:hover:not(:disabled) { border-color: var(--toss-blue); }
+  .view-switch-btn:disabled { cursor: default; }
+  .view-switch-btn.view-switch-active { background: #191f28; border-color: #191f28; color: #fff; }
+
+  /* v2.132/v2.142 popup.css 이식: ①지역/②③거래유형·매물종류 팝업 */
+  .filter-popup {
+    position: fixed;
+    z-index: 2000;
+    width: 460px;
+    background: #fff;
+    border: 1px solid var(--toss-line-strong);
+    border-radius: 14px;
+    box-shadow: 0 12px 28px rgba(25, 31, 40, 0.2);
+    padding: 12px;
+    font-size: 13px;
+    color: var(--toss-text);
+  }
+  .filter-popup-breadcrumb {
+    font-size: 12.5px;
+    color: var(--toss-text-sub);
+    font-weight: 600;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .filter-popup-breadcrumb .crumb-link { color: var(--toss-blue); cursor: pointer; }
+  .filter-popup-breadcrumb .crumb-link:hover { text-decoration: underline; }
+  .filter-popup-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px 10px;
+    margin-bottom: 8px;
+    border: 1px solid var(--toss-line-strong);
+    border-radius: 8px;
+    font-size: 13.3px;
+    background: var(--toss-bg);
+    font-family: inherit;
+  }
+  .filter-popup-search:focus { outline: none; border-color: var(--toss-blue); background: #fff; }
+  .filter-popup-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: min-content;
+    align-content: start;
+    gap: 6px;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .filter-popup-grid button {
+    border: 1px solid var(--toss-line-strong);
+    background: var(--toss-bg);
+    color: var(--toss-text);
+    min-width: 0;
+    padding: 8px 6px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: inherit;
+  }
+  .filter-popup-grid button:hover { border-color: var(--toss-blue); }
+  .filter-popup-grid button.selected { background: #191f28; border-color: #191f28; color: #fff; }
+  .filter-popup-grid button.hidden-by-search { display: none; }
+  .filter-popup-footer { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+  .filter-popup-footer button {
+    border: none;
+    background: var(--toss-line);
+    color: var(--toss-text-sub);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .filter-popup-footer button:hover { background: var(--toss-line-strong); }
+  .filter-popup-footer button.primary { background: var(--toss-blue); color: #fff; }
+  .filter-popup-footer button.primary:hover { background: var(--toss-blue-dark); }
+  .filter-popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .filter-popup-header button {
+    border: none;
+    background: transparent;
+    color: var(--toss-text-sub);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-family: inherit;
+  }
+  .filter-popup-header button:hover { background: var(--toss-line); }
+  .filter-popup-section-title { font-size: 12.5px; font-weight: 700; color: var(--toss-text); margin: 8px 0 6px; }
+  .filter-chip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .filter-chip-grid + .filter-chip-grid { margin-top: 14px; }
+  .filter-chip-grid button {
+    border: 1px solid var(--toss-line-strong);
+    background: var(--toss-bg);
+    color: var(--toss-text-sub);
+    min-width: 0;
+    padding: 8px 6px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: inherit;
+  }
+  .filter-chip-grid button:hover { border-color: var(--toss-blue); }
+  .filter-chip-grid button.selected { background: var(--toss-text); border-color: var(--toss-text); color: #fff; }
+
   /* v2.105: 로드뷰를 떠 있는 작은 팝업 대신, 지도 옆에 화면을 절반씩 나눠 크게
      보여주는 방식으로 변경(밸류맵 등 참고 사이트 방식). */
-  #mapWrap { display: flex; width: 100%; height: calc(100% - 37px); }
+  #mapWrap { flex: 1; min-height: 0; display: flex; width: 100%; }
   #map { flex: 1; min-width: 0; background: var(--toss-bg); }
   #roadviewSplit {
     display: none;
@@ -77,25 +294,25 @@
     border-radius: 6px;
     cursor: pointer;
   }
-  /* v2.114: 아이콘 버튼들을 지도 우측 상단에 세로로 고정 배치(지도 노출 영역이
-     나중에 줄어들어도 위치/크기가 변하지 않도록 position:fixed 사용). 로드뷰를 열면
-     로드뷰 닫기(✕) 버튼이 있는 #roadviewSplitBar(상단 37~69px)와 겹치던 문제 때문에
-     top을 96px로 내려서(버튼 한 칸 이상 여유) 항상 그 아래에서 시작하게 함. */
+  /* v2.143: [요청 반영] 아이콘 13개를 지도 우측 상단에 세로로 고정 배치하던 것을,
+     지도 위쪽(필터바 아래) 가로 1줄로 이동 - 이제 필터바/툴바 모두 body flex 컬럼의
+     정상적인 한 줄이라, 예전에 있던 "로드뷰 닫기 버튼과 안 겹치게 top:96px" 계산도
+     함께 필요 없어짐(position:fixed로 지도 위에 떠 있지 않으므로 겹칠 일 자체가 없음). */
   #mapToolbar {
-    position: fixed;
-    top: 96px;
-    right: 14px;
+    flex: none;
     display: flex;
-    flex-direction: column;
-    /* v2.141: [요청 반영] 체크박스 3개(폭이 더 넓음)를 버튼 10개와 같은 폭으로
-       늘리지 않고, 각자 원래 크기대로 우측 끝(오른쪽 테두리)에 맞춰 정렬 */
-    align-items: flex-end;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 10px;
-    z-index: 20;
+    padding: 6px 14px;
+    background: #fff;
+    border-bottom: 1px solid var(--toss-line);
   }
   .toolbar-group {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
     gap: 4px;
     background: #fff;
     border: 1px solid var(--toss-line);
@@ -104,12 +321,15 @@
     box-shadow: 0 1px 6px rgba(25, 31, 40, 0.15);
   }
   /* v2.114: 위성도/지적도/지형도 체크박스를 툴바 안으로 편입(기존 좌측 하단 배치는
-     지도가 커지면서 눈에 안 띈다는 피드백에 따라 이동). */
+     지도가 커지면서 눈에 안 띈다는 피드백에 따라 이동).
+     v2.143: 가로 1줄 배치로 바뀌면서, "버튼 10개의 우측 끝에 맞춰 정렬"하던 이전
+     요청은 margin-left:auto로 이 줄의 맨 오른쪽에 붙는 것으로 계승. */
   .toolbar-group.checkbox-group {
     padding: 8px 10px;
     font-size: 12px;
     color: var(--toss-text);
-    gap: 5px;
+    gap: 12px;
+    margin-left: auto;
   }
   .toolbar-group.checkbox-group label { display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
   .toolbar-group.checkbox-group input { margin: 0; }
@@ -173,8 +393,52 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.141</span>
+    <span id="buildTag">v2.143</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
+  </div>
+  <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
+       초기화/㎡)와 목록·지도 전환 버튼(정렬은 자리만)을 지도창에도 동일하게 구현.
+       필터는 이미 이 페이지가 로드 시점에 한 번에 받아온 전체 매물 배열(allListings)을
+       클라이언트에서 걸러 마커만 다시 그리는 방식이라, 목록창처럼 storage를 다시 읽지
+       않아도 됨. -->
+  <div id="mapFilterbar">
+    <div class="filter-dropdowns">
+      <button type="button" id="btnRegionFilter" class="filter-dropdown-btn" title="지역 선택">지역 전체 <span class="dd-caret">▾</span></button>
+      <button type="button" id="btnDealTypeFilter" class="filter-dropdown-btn" title="거래유형·매물종류 선택">거래유형·매물종류 전체 <span class="dd-caret">▾</span></button>
+    </div>
+    <div class="search-group">
+      <input type="text" id="searchInput" placeholder="검색어를 입력하세요" />
+      <button type="button" id="btnSearch">검색</button>
+      <button type="button" id="btnSearchReset" class="btn-reset" title="검색조건 초기화">초기화</button>
+      <button type="button" id="btnAreaUnit" class="btn-area-unit" title="면적 단위 표시 전환(㎡ ↔ 평)">⟳ ㎡</button>
+    </div>
+    <div class="view-switch">
+      <button type="button" id="btnSortView" class="view-switch-btn" title="정렬(준비 중)" disabled>⇅</button>
+      <button type="button" id="btnGoList" class="view-switch-btn" title="매물목록 열기">목록</button>
+      <button type="button" id="btnGoMap" class="view-switch-btn view-switch-active" title="현재 화면" disabled>지도</button>
+    </div>
+  </div>
+  <!-- v2.132/v2.142 popup.html 이식: ①지역 선택 팝업 -->
+  <div id="regionFilterPopup" class="filter-popup" style="display:none">
+    <div class="filter-popup-breadcrumb" id="regionBreadcrumb"></div>
+    <input type="text" id="regionSearchInput" class="filter-popup-search" placeholder="입력해서 찾기" style="display:none" />
+    <div class="filter-popup-grid" id="regionGrid"></div>
+    <div class="filter-popup-footer">
+      <button type="button" id="regionApplyBtn" class="primary">적용</button>
+      <button type="button" id="regionResetBtn">초기화</button>
+      <button type="button" id="regionCancelBtn">취소</button>
+    </div>
+  </div>
+  <!-- v2.132/v2.142 popup.html 이식: ②③거래유형·매물종류 통합 팝업 -->
+  <div id="dealTypeFilterPopup" class="filter-popup" style="display:none">
+    <div class="filter-popup-header">
+      <button type="button" id="dealTypeResetBtn" title="이 팝업의 선택 초기화">↻ 초기화</button>
+      <button type="button" id="dealTypeCloseBtn" title="닫기">✕</button>
+    </div>
+    <div class="filter-popup-section-title">거래유형</div>
+    <div class="filter-chip-grid" id="dealTypeChips"></div>
+    <div class="filter-popup-section-title">매물종류</div>
+    <div id="propertyTypeChips"></div>
   </div>
   <div id="mapWrap">
     <div id="map"></div>
@@ -186,15 +450,10 @@
       <div id="roadviewInner"></div>
     </div>
   </div>
-  <!-- v2.114: 13개 버튼(현재위치~처음으로) 전부를 지도 우측, 세로 1열로 고정 배치.
-       #mapWrap/#map의 크기가 나중에 줄어들어도(다른 메뉴가 추가되어도) 이 툴바는
-       화면 기준(position:fixed)으로 항상 같은 위치/크기를 유지한다. 로드뷰 닫기(✕)
-       버튼과 겹치지 않도록 top을 충분히 내렸고(CSS 참고), 체크박스도 눈에 잘 띄도록
-       기존 좌측 하단 대신 이 툴바 안으로 옮겼다. -->
-  <!-- v2.140: [요청 반영] 사용자 지정 순서대로 재배치(위성도/지적도/지형도 체크박스는
-       버튼 크기를 맞추기 위해 맨 아래로 이동).
-       v2.141: [요청 반영] 버튼 10개는 더 작게(.toolbar-btn-lg 확대 제거), 체크박스
-       3개는 버튼 열의 우측 끝에 맞춰 정렬(#mapToolbar의 align-items:flex-end). -->
+  <!-- v2.114: 13개 버튼(현재위치~처음으로) 순서 확정.
+       v2.140/v2.141: 순서 재배치 + 버튼 축소 + 체크박스 정렬(당시엔 지도 우측 세로 1열).
+       v2.143: [요청 반영] 지도 상하좌우 노출 영역을 넓히기 위해, 세로 우측 고정
+       배치(position:fixed)를 버리고 필터바 아래 가로 1줄로 이동(CSS 참고). -->
   <div id="mapToolbar">
     <div class="toolbar-group">
       <button type="button" id="btnLocate" class="toolbar-btn" title="현재위치"><img id="iconLocate" alt="현재위치" /></button>
@@ -222,6 +481,11 @@
       <label><input type="checkbox" id="chkTerrain" /> 지형도</label>
     </div>
   </div>
+  <!-- v2.143: [기능 추가] ①지역선택 필터에 필요한 전국 법정동 DB. popup.html이 쓰는
+       것과 같은 파일이며, 이 파일도 kakao-map.html과 함께 GitHub Pages 저장소
+       (hic71991-0928/maemulon-map)에 같이 업로드해야 함(한 번만 하면 되고, region-db.js
+       자체가 바뀌지 않는 한 다시 올릴 필요 없음). -->
+  <script src="region-db.js"></script>
   <script>
     // v2.105: 이 페이지는 GitHub Pages 같은 외부 호스팅에서 새 탭으로 열린다(확장
     // 페이지 안에서는 카카오맵 SDK 같은 원격 스크립트를 불러올 수 없어서). chrome.*
@@ -330,11 +594,25 @@
     }
 
     let mapInstance = null;
+    // v2.143: [버그 수정 아님, 리팩터] 필터를 걸 때마다 renderListings를 다시 호출해야
+    // 하는데(마커를 새로 그림), 예전 코드는 markers/InfoWindow가 함수 안 지역변수라
+    // 두 번째 호출부터 이전 마커가 안 지워지고 겹쳐 쌓이고(클러스터러도 중복 생성),
+    // "수정창 열기" 클릭 위임 리스너도 호출할 때마다 하나씩 더 붙는 문제가 생김 -
+    // 마커/클러스터러/InfoWindow/클릭 리스너를 모두 모듈 스코프로 옮겨서 재사용.
+    let currentMarkers = [];
+    let currentClusterer = null;
+    let infoWindowInstance = null;
+    let mapClickWired = false;
 
-    async function renderListings(list) {
+    // v2.143: [기능 추가] resetView=false면 지도의 현재 중심/확대 상태를 그대로 두고
+    // 마커만 다시 그린다(필터를 바꿀 때마다 매번 압구정역으로 화면이 튀면 불편하므로).
+    // resetView=true는 최초 로드 시점에만 사용(v2.110 기준 위치로 시작).
+    async function renderListings(list, resetView = true) {
       setStatus(`매물 ${list.length}건 확인 중...`);
-      const markers = [];
-      const infoWindow = new kakao.maps.InfoWindow({ removable: true });
+      if (currentClusterer) { currentClusterer.clear(); currentClusterer = null; }
+      currentMarkers.forEach((m) => m.setMap(null));
+      currentMarkers = [];
+      if (!infoWindowInstance) infoWindowInstance = new kakao.maps.InfoWindow({ removable: true });
       const updatedCoords = [];
       let failCount = 0;
 
@@ -359,29 +637,36 @@
             ${esc(addr)}
             <br/><button type="button" data-id="${esc(rec.__매물번호)}">수정창 열기</button>
           </div>`;
-          infoWindow.setContent(html);
-          infoWindow.open(mapInstance, marker);
+          infoWindowInstance.setContent(html);
+          infoWindowInstance.open(mapInstance, marker);
         });
-        markers.push(marker);
+        currentMarkers.push(marker);
       }
 
       // v2.105: 정보창의 "수정창 열기" 버튼은 매번 새로 그려지므로 document 위임 방식으로
       // 한 번만 연결하고, chrome.runtime.sendMessage로 확장 프로그램에 요청만 보낸다.
-      document.getElementById("map").addEventListener("click", (e) => {
-        const btn = e.target.closest(".info-window button[data-id]");
-        if (btn) sendToExtension({ type: "maemulon-open-edit", id: btn.dataset.id });
-      });
+      // v2.143: renderListings가 필터마다 다시 호출되므로, 이 리스너는 최초 1회만 등록.
+      if (!mapClickWired) {
+        mapClickWired = true;
+        document.getElementById("map").addEventListener("click", (e) => {
+          const btn = e.target.closest(".info-window button[data-id]");
+          if (btn) sendToExtension({ type: "maemulon-open-edit", id: btn.dataset.id });
+        });
+      }
 
-      if (markers.length) {
-        new kakao.maps.MarkerClusterer({ map: mapInstance, markers, averageCenter: true, minLevel: 6 });
+      if (currentMarkers.length) {
+        currentClusterer = new kakao.maps.MarkerClusterer({ map: mapInstance, markers: currentMarkers, averageCenter: true, minLevel: 6 });
         // v2.110: [요청 반영] 매물 데이터 기준(평균/밀집지역)으로 첫 화면 위치를
         // 자동 계산하는 방식이 계속 엉뚱한 곳을 잡는 문제가 있어, 사용자가 지정한
         // 고정 위치(DEFAULT_MAP_CENTER)로 항상 시작하도록 단순화함.
-        mapInstance.setCenter(new kakao.maps.LatLng(DEFAULT_MAP_LAT, DEFAULT_MAP_LNG));
-        mapInstance.setLevel(DEFAULT_MAP_LEVEL);
-        setStatus(`총 ${markers.length}건 표시됨${failCount ? ` (주소 변환 실패 ${failCount}건 제외)` : ""}.`);
+        if (resetView) {
+          mapInstance.setCenter(new kakao.maps.LatLng(DEFAULT_MAP_LAT, DEFAULT_MAP_LNG));
+          mapInstance.setLevel(DEFAULT_MAP_LEVEL);
+        }
+        const filtered = allListings.length && list.length !== allListings.length;
+        setStatus(`총 ${currentMarkers.length}건 표시됨${failCount ? ` (주소 변환 실패 ${failCount}건 제외)` : ""}${filtered ? ` (전체 ${allListings.length}건 중 필터링됨)` : ""}.`);
       } else {
-        setStatus("지도에 표시할 매물이 없습니다(전체주소가 저장된 매물이 없거나 좌표 변환에 실패했습니다).", true);
+        setStatus("지도에 표시할 매물이 없습니다(전체주소가 저장된 매물이 없거나 좌표 변환에 실패했습니다, 또는 필터 조건에 맞는 매물이 없습니다).", true);
       }
 
       // v2.105: 새로 변환한 좌표는 확장 프로그램에 돌려보내 chrome.storage에 캐싱하게 한다
@@ -787,6 +1072,318 @@
       new ResizeObserver(() => { if (roadview) roadview.relayout(); }).observe(split);
     }
 
+    // ===================== v2.143: 필터바(지역/거래유형·매물종류/검색) =====================
+    // popup.js의 동일 기능(v2.132~v2.142)을 이 페이지용으로 이식. 목록창은 chrome.storage를
+    // 실시간 구독해서 다시 읽지만, 이 지도창은 페이지 로드 시점에 한 번 받아온 전체 배열
+    // (allListings)을 그대로 두고 클라이언트에서 걸러서 마커만 다시 그린다(목록창처럼
+    // storage를 다시 읽을 필요가 없어 오히려 더 간단함).
+    let allListings = [];
+    let currentQuery = "";
+    let selectedRegion = { sido: "", sgg: "", emdSet: new Set() };
+    let selectedDealTypes = new Set();
+    let selectedPropertyTypes = new Set();
+    let areaUnit = "pyeong";
+
+    const PROPERTY_TYPE_GROUPS = [
+      ["아파트", "재건축", "오피스텔", "빌라", "아파트분양권", "오피스텔분양권", "원룸", "단독/다가구", "전원주택", "상가주택", "재개발"],
+      ["상가", "토지", "사무실", "건물", "공장/창고", "지식산업센터"],
+    ];
+    const PROPERTY_TYPE_LABELS = {
+      "빌라": "연립빌라다세대", "원룸": "원룸투룸", "건물": "빌딩건물", "토지": "대지임야전답", "상가": "상가점포",
+    };
+    const DEAL_TYPE_ITEMS = ["매매", "전세", "월세", "단기임대"];
+    const SIDO_SHORT_NAME = {
+      "서울특별시": "서울", "경기도": "경기", "인천광역시": "인천", "부산광역시": "부산",
+      "대전광역시": "대전", "대구광역시": "대구", "울산광역시": "울산", "세종특별자치시": "세종",
+      "전남광주통합특별시": "전남광주", "강원특별자치도": "강원", "충청북도": "충북", "충청남도": "충남",
+      "경상북도": "경북", "경상남도": "경남", "전북특별자치도": "전북", "제주특별자치도": "제주",
+    };
+    const SIDO_ORDER = [
+      "서울특별시", "경기도", "인천광역시", "부산광역시", "대전광역시", "대구광역시",
+      "울산광역시", "세종특별자치시", "전남광주통합특별시", "강원특별자치도", "충청북도",
+      "충청남도", "경상북도", "경상남도", "전북특별자치도", "제주특별자치도",
+    ];
+    function sortKo(arr) { return [...arr].sort((a, b) => a.localeCompare(b, "ko")); }
+
+    // v2.143: [알려진 제한, 명시] 목록창의 검색(matchesQuery)은 엑셀 전체 컬럼(COLUMN_DEFS)을
+    // 대상으로 하지만, 이 페이지는 COLUMN_DEFS를 안 갖고 있어 마커 정보창에 쓰는 핵심
+    // 필드 몇 개로만 검색한다(제목/매물소개/타이틀/거래유형/매물종류/지번/전체주소/지역/중개사).
+    function matchesMapQuery(rec, q) {
+      if (!q) return true;
+      const haystack = [rec["제목"], rec["매물소개"], rec["타이틀"], rec["거래유형"], rec["매물종류"], rec["지번"], rec["전체주소"], rec["지역"], rec["중개사"], rec["중개사(2)"]]
+        .filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(q);
+    }
+    function computeFilteredListings() {
+      const q = currentQuery.trim().toLowerCase();
+      let pool = allListings.filter((rec) => matchesMapQuery(rec, q));
+      // v2.132 원본과 동일: 구조화된 지역코드가 매물 데이터에 없어 전체주소/지역
+      // 문자열에 선택한 시군구·읍면동명이 포함되는지로 매칭.
+      if (selectedRegion.sgg) {
+        pool = pool.filter((rec) => {
+          const addr = `${rec["전체주소"] || ""} ${rec["지역"] || ""}`;
+          if (!addr.includes(selectedRegion.sgg)) return false;
+          if (selectedRegion.emdSet.size === 0) return true;
+          return [...selectedRegion.emdSet].some((emd) => addr.includes(emd));
+        });
+      }
+      if (selectedDealTypes.size) pool = pool.filter((rec) => selectedDealTypes.has(rec["거래유형"]));
+      if (selectedPropertyTypes.size) {
+        pool = pool.filter((rec) => {
+          const t = rec["매물종류"] || "";
+          return [...selectedPropertyTypes].some((sel) => t.includes(sel));
+        });
+      }
+      return pool;
+    }
+    // v2.143: 필터를 바꿀 때마다 압구정역(기본 위치)으로 화면이 튀면 불편하므로,
+    // 필터 조작으로 인한 재렌더링은 항상 resetView=false(현재 보던 위치/확대 유지).
+    function refreshMapFilterView(resetView) {
+      renderListings(computeFilteredListings(), !!resetView);
+    }
+
+    document.getElementById("btnSearch").addEventListener("click", () => {
+      currentQuery = document.getElementById("searchInput").value;
+      refreshMapFilterView(false);
+    });
+    document.getElementById("searchInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("btnSearch").click();
+    });
+    function updateAreaUnitButton() {
+      document.getElementById("btnAreaUnit").textContent = areaUnit === "pyeong" ? "⟳ ㎡" : "⟳ 평";
+    }
+    document.getElementById("btnAreaUnit").addEventListener("click", () => {
+      // v2.143: [알려진 제한] 지도 마커 정보창엔 면적 항목이 없어서, 목록창과 달리
+      // 지금은 버튼 표시(단위 전환 라벨)만 동일하게 두고 실제 화면 변화는 없음.
+      areaUnit = areaUnit === "pyeong" ? "sqm" : "pyeong";
+      updateAreaUnitButton();
+    });
+    updateAreaUnitButton();
+
+    document.getElementById("btnSearchReset").addEventListener("click", () => {
+      currentQuery = "";
+      document.getElementById("searchInput").value = "";
+      selectedRegion = { sido: "", sgg: "", emdSet: new Set() };
+      selectedDealTypes = new Set();
+      selectedPropertyTypes = new Set();
+      updateRegionButtonLabel();
+      updateDealTypeButtonLabel();
+      refreshMapFilterView(false);
+    });
+
+    // ===== ①지역선택 팝업(popup.js openRegionPopup 계열 이식) =====
+    const regionPopupEl = document.getElementById("regionFilterPopup");
+    const regionBreadcrumbEl = document.getElementById("regionBreadcrumb");
+    const regionGridEl = document.getElementById("regionGrid");
+    let regionNav = { sido: "", sgg: "", emdSet: new Set() };
+
+    function updateRegionButtonLabel() {
+      const btn = document.getElementById("btnRegionFilter");
+      if (!selectedRegion.sgg) {
+        btn.innerHTML = `지역 전체 <span class="dd-caret">▾</span>`;
+        btn.classList.remove("filter-dropdown-selected");
+        return;
+      }
+      const emds = [...selectedRegion.emdSet];
+      let label = SIDO_SHORT_NAME[selectedRegion.sgg] || selectedRegion.sgg;
+      if (emds.length === 1) label += ` ${emds[0]}`;
+      else if (emds.length > 1) label += ` ${emds[0]} +${emds.length - 1}`;
+      btn.innerHTML = `${esc(label)} <span class="dd-caret">▾</span>`;
+      btn.classList.add("filter-dropdown-selected");
+    }
+    function sggKeysOf(sido) {
+      const node = REGION_DB[sido];
+      if (!node) return [];
+      return Object.keys(node.sgg);
+    }
+    function directEmdOnly(sido) {
+      const keys = sggKeysOf(sido);
+      return keys.length === 1 && keys[0] === "";
+    }
+    const regionSearchEl = document.getElementById("regionSearchInput");
+    regionSearchEl.addEventListener("input", () => {
+      const q = regionSearchEl.value.trim();
+      regionGridEl.querySelectorAll("button").forEach((b) => {
+        b.classList.toggle("hidden-by-search", q && !b.textContent.includes(q));
+      });
+    });
+    function renderRegionPopup() {
+      regionSearchEl.style.display = "none";
+      regionSearchEl.value = "";
+      const crumbs = [];
+      crumbs.push(regionNav.sido
+        ? `<span class="crumb-link" data-level="sido">${esc(SIDO_SHORT_NAME[regionNav.sido] || regionNav.sido)}</span>`
+        : "시·도");
+      crumbs.push(regionNav.sido && !directEmdOnly(regionNav.sido)
+        ? (regionNav.sgg ? `<span class="crumb-link" data-level="sgg">${esc(regionNav.sgg)}</span>` : "시·군·구 선택")
+        : null);
+      crumbs.push((regionNav.sido && (directEmdOnly(regionNav.sido) || regionNav.sgg)) ? "읍·면·동 선택(여러 개 가능)" : null);
+      regionBreadcrumbEl.innerHTML = crumbs.filter(Boolean).join(" &rsaquo; ");
+
+      regionGridEl.innerHTML = "";
+
+      if (!regionNav.sido) {
+        SIDO_ORDER.filter((sido) => REGION_DB[sido]).forEach((sido) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = SIDO_SHORT_NAME[sido] || sido;
+          b.addEventListener("click", () => {
+            regionNav = { sido, sgg: "", emdSet: new Set() };
+            renderRegionPopup();
+          });
+          regionGridEl.appendChild(b);
+        });
+        return;
+      }
+      if (!directEmdOnly(regionNav.sido) && !regionNav.sgg) {
+        sortKo(sggKeysOf(regionNav.sido)).forEach((sgg) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = sgg;
+          b.addEventListener("click", () => {
+            regionNav.sgg = sgg;
+            regionNav.emdSet = new Set();
+            renderRegionPopup();
+          });
+          regionGridEl.appendChild(b);
+        });
+        return;
+      }
+      const sggKey = directEmdOnly(regionNav.sido) ? "" : regionNav.sgg;
+      const emdMap = REGION_DB[regionNav.sido].sgg[sggKey].emd;
+      regionSearchEl.style.display = "block";
+      sortKo(Object.keys(emdMap)).forEach((emd) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = emd;
+        if (regionNav.emdSet.has(emd)) b.classList.add("selected");
+        b.addEventListener("click", () => {
+          if (regionNav.emdSet.has(emd)) regionNav.emdSet.delete(emd);
+          else regionNav.emdSet.add(emd);
+          renderRegionPopup();
+        });
+        regionGridEl.appendChild(b);
+      });
+    }
+    regionBreadcrumbEl.addEventListener("click", (e) => {
+      const link = e.target.closest(".crumb-link");
+      if (!link) return;
+      if (link.dataset.level === "sido") regionNav = { sido: "", sgg: "", emdSet: new Set() };
+      else if (link.dataset.level === "sgg") { regionNav.sgg = ""; regionNav.emdSet = new Set(); }
+      renderRegionPopup();
+    });
+    function openRegionPopup() {
+      regionNav = { sido: selectedRegion.sido, sgg: selectedRegion.sgg, emdSet: new Set(selectedRegion.emdSet) };
+      renderRegionPopup();
+      const rect = document.getElementById("btnRegionFilter").getBoundingClientRect();
+      regionPopupEl.style.left = Math.max(4, rect.left) + "px";
+      regionPopupEl.style.top = (rect.bottom + 4) + "px";
+      regionPopupEl.style.display = "block";
+    }
+    function closeRegionPopup() { regionPopupEl.style.display = "none"; }
+    document.getElementById("btnRegionFilter").addEventListener("click", () => {
+      if (regionPopupEl.style.display === "none") openRegionPopup();
+      else closeRegionPopup();
+    });
+    document.getElementById("regionCancelBtn").addEventListener("click", closeRegionPopup);
+    document.getElementById("regionResetBtn").addEventListener("click", () => {
+      selectedRegion = { sido: "", sgg: "", emdSet: new Set() };
+      updateRegionButtonLabel();
+      closeRegionPopup();
+      refreshMapFilterView(false);
+    });
+    document.getElementById("regionApplyBtn").addEventListener("click", () => {
+      if (!regionNav.sgg && !directEmdOnly(regionNav.sido)) {
+        alert("시·군·구까지는 선택해 주세요.");
+        return;
+      }
+      const sggForMatch = directEmdOnly(regionNav.sido) ? regionNav.sido : regionNav.sgg;
+      selectedRegion = { sido: regionNav.sido, sgg: sggForMatch, emdSet: new Set(regionNav.emdSet) };
+      updateRegionButtonLabel();
+      closeRegionPopup();
+      refreshMapFilterView(false);
+    });
+    document.addEventListener("mousedown", (e) => {
+      if (regionPopupEl.style.display === "none") return;
+      if (regionPopupEl.contains(e.target)) return;
+      if (e.target.closest("#btnRegionFilter")) return;
+      closeRegionPopup();
+    });
+
+    // ===== ②③거래유형·매물종류 통합 팝업(popup.js openDealTypePopup 계열 이식) =====
+    const dealTypePopupEl = document.getElementById("dealTypeFilterPopup");
+    function updateDealTypeButtonLabel() {
+      const btn = document.getElementById("btnDealTypeFilter");
+      const parts = [];
+      if (selectedDealTypes.size) parts.push([...selectedDealTypes].join(", "));
+      if (selectedPropertyTypes.size) {
+        const arr = [...selectedPropertyTypes].map((t) => PROPERTY_TYPE_LABELS[t] || t);
+        parts.push(arr.length > 1 ? `${arr[0]} +${arr.length - 1}` : arr[0]);
+      }
+      if (!parts.length) {
+        btn.innerHTML = `거래유형·매물종류 전체 <span class="dd-caret">▾</span>`;
+        btn.classList.remove("filter-dropdown-selected");
+        return;
+      }
+      btn.innerHTML = `${esc(parts.join(" / "))} <span class="dd-caret">▾</span>`;
+      btn.classList.add("filter-dropdown-selected");
+    }
+    function renderDealTypeChips() {
+      const dealEl = document.getElementById("dealTypeChips");
+      dealEl.innerHTML = DEAL_TYPE_ITEMS.map((t) =>
+        `<button type="button" data-kind="deal" data-val="${esc(t)}" class="${selectedDealTypes.has(t) ? "selected" : ""}">${esc(t)}</button>`
+      ).join("");
+      const propEl = document.getElementById("propertyTypeChips");
+      propEl.innerHTML = PROPERTY_TYPE_GROUPS.map((items) =>
+        `<div class="filter-chip-grid">${items.map((t) =>
+          `<button type="button" data-kind="property" data-val="${esc(t)}" class="${selectedPropertyTypes.has(t) ? "selected" : ""}">${esc(PROPERTY_TYPE_LABELS[t] || t)}</button>`
+        ).join("")}</div>`
+      ).join("");
+    }
+    dealTypePopupEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-kind]");
+      if (!btn) return;
+      const set = btn.dataset.kind === "deal" ? selectedDealTypes : selectedPropertyTypes;
+      if (set.has(btn.dataset.val)) set.delete(btn.dataset.val); else set.add(btn.dataset.val);
+      btn.classList.toggle("selected");
+      updateDealTypeButtonLabel();
+      refreshMapFilterView(false);
+    });
+    function openDealTypePopup() {
+      renderDealTypeChips();
+      const rect = document.getElementById("btnDealTypeFilter").getBoundingClientRect();
+      dealTypePopupEl.style.left = Math.max(4, rect.left) + "px";
+      dealTypePopupEl.style.top = (rect.bottom + 4) + "px";
+      dealTypePopupEl.style.display = "block";
+    }
+    function closeDealTypePopup() { dealTypePopupEl.style.display = "none"; }
+    document.getElementById("btnDealTypeFilter").addEventListener("click", () => {
+      if (dealTypePopupEl.style.display === "none") openDealTypePopup();
+      else closeDealTypePopup();
+    });
+    document.getElementById("dealTypeCloseBtn").addEventListener("click", closeDealTypePopup);
+    document.getElementById("dealTypeResetBtn").addEventListener("click", () => {
+      selectedDealTypes = new Set();
+      selectedPropertyTypes = new Set();
+      renderDealTypeChips();
+      updateDealTypeButtonLabel();
+      refreshMapFilterView(false);
+    });
+    document.addEventListener("mousedown", (e) => {
+      if (dealTypePopupEl.style.display === "none") return;
+      if (dealTypePopupEl.contains(e.target)) return;
+      if (e.target.closest("#btnDealTypeFilter")) return;
+      closeDealTypePopup();
+    });
+
+    // ===== v2.143: [기능 추가] "목록" 버튼 - 목록창(popup.html)을 새로 연다.
+    // background.js에 새 메시지 타입(maemulon-open-list) 추가가 필요(별도 커밋).
+    // "지도" 버튼은 이미 지도창이므로 view-switch-active + disabled로 현재 화면만 표시.
+    // "정렬" 버튼은 이번엔 자리만(disabled), 기능은 다음 작업에서 구현. =====
+    document.getElementById("btnGoList").addEventListener("click", () => {
+      sendToExtension({ type: "maemulon-open-list" });
+    });
+
     async function main() {
       try {
         await loadKakaoSdk();
@@ -812,8 +1409,10 @@
           return;
         }
         const response = await sendToExtension({ type: "maemulon-ready" });
-        if (response && Array.isArray(response.list)) renderListings(response.list);
-        else setStatus("확장 프로그램에서 매물 데이터를 받아오지 못했습니다." + (lastSendError ? ` (사유: ${lastSendError})` : ""), true);
+        if (response && Array.isArray(response.list)) {
+          allListings = response.list;
+          refreshMapFilterView(true); // v2.143: 필터 없는 최초 로드 = 전체 목록, 기본 위치로 시작
+        } else setStatus("확장 프로그램에서 매물 데이터를 받아오지 못했습니다." + (lastSendError ? ` (사유: ${lastSendError})` : ""), true);
       });
     }
 
