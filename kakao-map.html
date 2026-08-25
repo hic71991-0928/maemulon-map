@@ -345,16 +345,18 @@
      v2.144: [요청 반영] 세로 1열로 되돌아온 툴바 안에서, 가로로 넓게 벌어져 있던
      체크박스 3개를 약 70×70px의 정사각형에 가까운 작은 블록으로 압축(글자 크기도
      같이 줄여서 3줄이 그 폭 안에 들어가게 함). */
+  /* v2.145: [요청 반영] 체크박스 3개 글자/박스 크기 +1pt(10.3px->11.6px, 11px->12.3px)
+     + 가운데 정렬(라벨 자체를 justify-content:center로 중앙 정렬). */
   .toolbar-group.checkbox-group {
     width: 70px;
-    align-items: flex-start;
+    align-items: center;
     padding: 6px 5px;
-    font-size: 10.3px;
+    font-size: 11.6px;
     color: var(--toss-text);
-    gap: 3px;
+    gap: 4px;
   }
-  .toolbar-group.checkbox-group label { display: flex; align-items: center; gap: 3px; cursor: pointer; white-space: nowrap; }
-  .toolbar-group.checkbox-group input { margin: 0; width: 11px; height: 11px; }
+  .toolbar-group.checkbox-group label { display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+  .toolbar-group.checkbox-group input { margin: 0; width: 12.3px; height: 12.3px; }
   /* v2.141: [요청 반영] 버튼 10개(현재위치~처음으로)는 작을수록 좋다는 요청에 따라
      v2.140의 44px(일부는 50% 확대해 60px)에서 36px/아이콘 22px로 축소(.toolbar-btn-lg
      확대 규칙은 제거) */
@@ -415,7 +417,7 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.144</span>
+    <span id="buildTag">v2.145</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
@@ -1302,6 +1304,14 @@
       renderRegionPopup();
     });
     function openRegionPopup() {
+      // v2.145: [진단 개선] 이 버튼을 눌러도 아무 반응이 없다는 보고가 있었음 - 가장
+      // 유력한 원인은 region-db.js가 GitHub Pages 저장소(kakao-map.html과 같은 곳)에
+      // 아직 업로드되지 않은 경우: 그러면 REGION_DB가 정의되지 않아 renderRegionPopup()
+      // 안에서 조용히(콘솔에만) 오류가 나며 팝업이 안 뜬다 - 화면에 원인을 바로 보여줌.
+      if (typeof REGION_DB === "undefined") {
+        alert("지역 데이터(region-db.js)를 불러오지 못했습니다.\nGitHub Pages 저장소(hic71991-0928/maemulon-map)에 kakao-map.html과 함께 region-db.js 파일도 업로드되어 있는지 확인해 주세요.");
+        return;
+      }
       regionNav = { sido: selectedRegion.sido, sgg: selectedRegion.sgg, emdSet: new Set(selectedRegion.emdSet) };
       renderRegionPopup();
       const rect = document.getElementById("btnRegionFilter").getBoundingClientRect();
