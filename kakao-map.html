@@ -256,6 +256,23 @@
      보여주는 방식으로 변경(밸류맵 등 참고 사이트 방식). */
   #mapWrap { flex: 1; min-height: 0; display: flex; width: 100%; }
   #map { flex: 1; min-width: 0; background: var(--toss-bg); }
+  /* v2.144: [요청 반영] ③ 매물목록 패널 - 아직 기능은 없고, 나중에 실제로 붙일 때
+     레이아웃이 안 깨지도록 자리만 미리 예약해 둔 자리표시자(placeholder). 폭은
+     확정값이 아니라 나중에 얼마든지 바뀔 수 있음(지금은 임의로 280px). */
+  #listPanelPlaceholder {
+    flex: none;
+    width: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: var(--toss-bg);
+    border-left: 1px dashed var(--toss-line-strong);
+    color: var(--toss-text-mute);
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 20px;
+  }
   #roadviewSplit {
     display: none;
     flex: 1;
@@ -294,24 +311,28 @@
     border-radius: 6px;
     cursor: pointer;
   }
-  /* v2.143: [요청 반영] 아이콘 13개를 지도 우측 상단에 세로로 고정 배치하던 것을,
-     지도 위쪽(필터바 아래) 가로 1줄로 이동 - 이제 필터바/툴바 모두 body flex 컬럼의
-     정상적인 한 줄이라, 예전에 있던 "로드뷰 닫기 버튼과 안 겹치게 top:96px" 계산도
-     함께 필요 없어짐(position:fixed로 지도 위에 떠 있지 않으므로 겹칠 일 자체가 없음). */
+  /* v2.143: 아이콘 13개를 지도 우측 상단 세로 고정 배치(position:fixed)에서 필터바
+     아래 가로 1줄로 옮겼었는데, 지도 폭 자체는 안 줄어들고 화면 위아래만 좁아지는
+     효과라 요청과 달랐음.
+     v2.144: [요청 반영] #mapWrap의 정상적인 flex 자식(세로 1열)으로 다시 배치 -
+     이번엔 실제로 지도 폭이 그만큼 줄어들고("지도 좌우 축소"), position:fixed가
+     아니므로 로드뷰 닫기 버튼과 겹칠 걱정도 여전히 없음. 아이콘 10개 전체 폭이
+     대략 55px(버튼 36px + 그룹 테두리/패딩)이 되도록 폭을 지정. */
   #mapToolbar {
     flex: none;
+    width: 60px;
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
-    padding: 6px 14px;
+    gap: 8px;
+    padding: 8px 4px;
     background: #fff;
-    border-bottom: 1px solid var(--toss-line);
+    border-left: 1px solid var(--toss-line);
+    overflow-y: auto;
   }
   .toolbar-group {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
     gap: 4px;
     background: #fff;
@@ -320,19 +341,20 @@
     padding: 6px;
     box-shadow: 0 1px 6px rgba(25, 31, 40, 0.15);
   }
-  /* v2.114: 위성도/지적도/지형도 체크박스를 툴바 안으로 편입(기존 좌측 하단 배치는
-     지도가 커지면서 눈에 안 띈다는 피드백에 따라 이동).
-     v2.143: 가로 1줄 배치로 바뀌면서, "버튼 10개의 우측 끝에 맞춰 정렬"하던 이전
-     요청은 margin-left:auto로 이 줄의 맨 오른쪽에 붙는 것으로 계승. */
+  /* v2.114: 위성도/지적도/지형도 체크박스를 툴바 안으로 편입.
+     v2.144: [요청 반영] 세로 1열로 되돌아온 툴바 안에서, 가로로 넓게 벌어져 있던
+     체크박스 3개를 약 70×70px의 정사각형에 가까운 작은 블록으로 압축(글자 크기도
+     같이 줄여서 3줄이 그 폭 안에 들어가게 함). */
   .toolbar-group.checkbox-group {
-    padding: 8px 10px;
-    font-size: 12px;
+    width: 70px;
+    align-items: flex-start;
+    padding: 6px 5px;
+    font-size: 10.3px;
     color: var(--toss-text);
-    gap: 12px;
-    margin-left: auto;
+    gap: 3px;
   }
-  .toolbar-group.checkbox-group label { display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
-  .toolbar-group.checkbox-group input { margin: 0; }
+  .toolbar-group.checkbox-group label { display: flex; align-items: center; gap: 3px; cursor: pointer; white-space: nowrap; }
+  .toolbar-group.checkbox-group input { margin: 0; width: 11px; height: 11px; }
   /* v2.141: [요청 반영] 버튼 10개(현재위치~처음으로)는 작을수록 좋다는 요청에 따라
      v2.140의 44px(일부는 50% 확대해 60px)에서 36px/아이콘 22px로 축소(.toolbar-btn-lg
      확대 규칙은 제거) */
@@ -393,7 +415,7 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.143</span>
+    <span id="buildTag">v2.144</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
@@ -449,37 +471,44 @@
       </div>
       <div id="roadviewInner"></div>
     </div>
-  </div>
-  <!-- v2.114: 13개 버튼(현재위치~처음으로) 순서 확정.
-       v2.140/v2.141: 순서 재배치 + 버튼 축소 + 체크박스 정렬(당시엔 지도 우측 세로 1열).
-       v2.143: [요청 반영] 지도 상하좌우 노출 영역을 넓히기 위해, 세로 우측 고정
-       배치(position:fixed)를 버리고 필터바 아래 가로 1줄로 이동(CSS 참고). -->
-  <div id="mapToolbar">
-    <div class="toolbar-group">
-      <button type="button" id="btnLocate" class="toolbar-btn" title="현재위치"><img id="iconLocate" alt="현재위치" /></button>
-      <button type="button" id="btnRoadview" class="toolbar-btn toolbar-btn-text" title="로드뷰(선택)">로드뷰</button>
+    <!-- v2.114: 13개 버튼(현재위치~처음으로) 순서 확정.
+         v2.140/v2.141: 순서 재배치 + 버튼 축소 + 체크박스 정렬(당시엔 position:fixed로
+         지도 위에 떠서 우측 세로 1열).
+         v2.143: 지도 노출 영역을 넓히기 위해 가로 1줄(필터바 아래)로 옮겼었음.
+         v2.144: [요청 반영] 다시 세로 1열로 되돌리되, 이번엔 #mapWrap의 실제 flex
+         자식(정상적인 레이아웃 한 칸)으로 배치해서 지도 폭이 실제로 줄어들게 함
+         (v2.140/141은 position:fixed라 지도 위에 떠 있기만 하고 지도 폭 자체는 안
+         줄었었음) - 우측에 새로 추가한 ③ 매물목록 자리(placeholder)와 나란히 배치. -->
+    <div id="mapToolbar">
+      <div class="toolbar-group">
+        <button type="button" id="btnLocate" class="toolbar-btn" title="현재위치"><img id="iconLocate" alt="현재위치" /></button>
+        <button type="button" id="btnRoadview" class="toolbar-btn toolbar-btn-text" title="로드뷰(선택)">로드뷰</button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" id="btnZoomIn" class="toolbar-btn" title="확대"><img id="iconZoomIn" alt="확대" /></button>
+        <button type="button" id="btnZoomOut" class="toolbar-btn" title="축소"><img id="iconZoomOut" alt="축소" /></button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" id="btnDistance" class="toolbar-btn" title="거리재기"><img id="iconDistance" alt="거리재기" /></button>
+        <button type="button" id="btnArea" class="toolbar-btn" title="면적재기"><img id="iconArea" alt="면적재기" /></button>
+        <button type="button" id="btnRadius" class="toolbar-btn" title="반경재기"><img id="iconRadius" alt="반경재기" /></button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" id="btnCalculator" class="toolbar-btn" title="계산기"><img id="iconCalculator" alt="계산기" /></button>
+        <button type="button" id="btnRealPrice" class="toolbar-btn" title="실거래가"><img id="iconRealPrice" alt="실거래가" /></button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" id="btnHome" class="toolbar-btn toolbar-btn-text" title="처음으로">처음으로</button>
+      </div>
+      <div class="toolbar-group checkbox-group">
+        <label><input type="checkbox" id="chkSkyview" /> 위성도</label>
+        <label><input type="checkbox" id="chkDistrict" checked /> 지적도</label>
+        <label><input type="checkbox" id="chkTerrain" /> 지형도</label>
+      </div>
     </div>
-    <div class="toolbar-group">
-      <button type="button" id="btnZoomIn" class="toolbar-btn" title="확대"><img id="iconZoomIn" alt="확대" /></button>
-      <button type="button" id="btnZoomOut" class="toolbar-btn" title="축소"><img id="iconZoomOut" alt="축소" /></button>
-    </div>
-    <div class="toolbar-group">
-      <button type="button" id="btnDistance" class="toolbar-btn" title="거리재기"><img id="iconDistance" alt="거리재기" /></button>
-      <button type="button" id="btnArea" class="toolbar-btn" title="면적재기"><img id="iconArea" alt="면적재기" /></button>
-      <button type="button" id="btnRadius" class="toolbar-btn" title="반경재기"><img id="iconRadius" alt="반경재기" /></button>
-    </div>
-    <div class="toolbar-group">
-      <button type="button" id="btnCalculator" class="toolbar-btn" title="계산기"><img id="iconCalculator" alt="계산기" /></button>
-      <button type="button" id="btnRealPrice" class="toolbar-btn" title="실거래가"><img id="iconRealPrice" alt="실거래가" /></button>
-    </div>
-    <div class="toolbar-group">
-      <button type="button" id="btnHome" class="toolbar-btn toolbar-btn-text" title="처음으로">처음으로</button>
-    </div>
-    <div class="toolbar-group checkbox-group">
-      <label><input type="checkbox" id="chkSkyview" /> 위성도</label>
-      <label><input type="checkbox" id="chkDistrict" checked /> 지적도</label>
-      <label><input type="checkbox" id="chkTerrain" /> 지형도</label>
-    </div>
+    <!-- v2.144: [요청 반영] ③ 매물목록 패널 자리만 배치(기능 구현 안 함) - 폭은
+         확정값이 아니라 나중에 바뀔 수 있음(지금은 자리 확인용 임시 폭). -->
+    <div id="listPanelPlaceholder">매물목록 패널 자리<br />(추후 구현 예정)</div>
   </div>
   <!-- v2.143: [기능 추가] ①지역선택 필터에 필요한 전국 법정동 DB. popup.html이 쓰는
        것과 같은 파일이며, 이 파일도 kakao-map.html과 함께 GitHub Pages 저장소
