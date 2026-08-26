@@ -473,12 +473,29 @@
     border-radius: 4px;
     white-space: nowrap;
   }
+  /* v2.163: [기능 추가] 목록창 "매물on 지도" 아이콘으로 특정 매물 위치를 찍었을 때,
+     기존 파란 물방울 마커와 구분되는 빨간 펄스 마커 - 클릭하면 수정창이 열린다. */
+  .mm-focus-marker {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ff3b30;
+    border: 3px solid #ffffff;
+    box-shadow: 0 0 0 rgba(255, 59, 48, 0.6);
+    animation: mm-focus-pulse 1.4s infinite;
+    cursor: pointer;
+  }
+  @keyframes mm-focus-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.6); }
+    70% { box-shadow: 0 0 0 16px rgba(255, 59, 48, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+  }
 </style>
 </head>
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.162</span>
+    <span id="buildTag">v2.163</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
@@ -612,6 +629,11 @@
     };
 
     const EXT_ID = new URLSearchParams(location.search).get("ext");
+    // v2.163: [기능 추가] 목록창의 "매물on 지도" 아이콘 클릭으로 이 페이지가 열리면,
+    // 해당 매물 위치로 이동하고 빨간 펄스 마커로 표시한다(아래 applyFocusMarker 참고).
+    const FOCUS_ID = new URLSearchParams(location.search).get("focusId");
+    const FOCUS_LAT = parseFloat(new URLSearchParams(location.search).get("focusLat"));
+    const FOCUS_LNG = parseFloat(new URLSearchParams(location.search).get("focusLng"));
 
     document.getElementById("iconLocate").src = ICONS.locate;
     document.getElementById("iconZoomIn").src = ICONS.zoomIn;
@@ -697,6 +719,33 @@
     // 구현하려면 매물번호별 좌표/마커를 알아야 해서, 성공적으로 지도에 찍힌 레코드만
     // (id, rec, pos, marker) 형태로 따로 보관해둔다.
     let currentMarkerData = [];
+    // v2.163: 위 FOCUS_ID/FOCUS_LAT/FOCUS_LNG로 지정된 매물을 강조 표시하는 오버레이.
+    let focusOverlay = null;
+
+    // v2.163: [기능 추가] 목록창 "매물on 지도" 아이콘에서 넘어온 매물을 지도 중앙 근처로
+    // 이동시키고, 기존 파란 물방울 마커와 겹쳐 빨간 펄스 마커를 얹어 눈에 띄게 한다.
+    // currentMarkerData에서 찾으면 그 좌표를, 못 찾으면(아직 렌더링 전이거나 필터에
+    // 걸러진 경우) URL로 넘어온 원본 좌표를 그대로 쓴다. 클릭하면 수정창이 열린다
+    // (기존 마커 클릭과 동일한 동작 - maemulon-open-edit).
+    function applyFocusMarker() {
+      if (focusOverlay) { focusOverlay.setMap(null); focusOverlay = null; }
+      if (!FOCUS_ID && !(Number.isFinite(FOCUS_LAT) && Number.isFinite(FOCUS_LNG))) return;
+      const target = currentMarkerData.find((d) => d.id === FOCUS_ID);
+      const lat = target ? target.pos.getLat() : FOCUS_LAT;
+      const lng = target ? target.pos.getLng() : FOCUS_LNG;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const pos = new kakao.maps.LatLng(lat, lng);
+      mapInstance.setCenter(pos);
+      if (mapInstance.getLevel() > 3) mapInstance.setLevel(3);
+      const el = document.createElement("div");
+      el.className = "mm-focus-marker";
+      el.title = "선택한 매물 위치 (클릭하면 수정창이 열립니다)";
+      el.addEventListener("click", () => {
+        sendToExtension({ type: "maemulon-open-edit", id: FOCUS_ID || (target && target.id) });
+      });
+      focusOverlay = new kakao.maps.CustomOverlay({ position: pos, content: el, yAnchor: 0.5, xAnchor: 0.5, zIndex: 999 });
+      focusOverlay.setMap(mapInstance);
+    }
 
     // v2.143: [기능 추가] resetView=false면 지도의 현재 중심/확대 상태를 그대로 두고
     // 마커만 다시 그린다(필터를 바꿀 때마다 매번 압구정역으로 화면이 튀면 불편하므로).
@@ -1306,7 +1355,9 @@
     // v2.143: 필터를 바꿀 때마다 압구정역(기본 위치)으로 화면이 튀면 불편하므로,
     // 필터 조작으로 인한 재렌더링은 항상 resetView=false(현재 보던 위치/확대 유지).
     function refreshMapFilterView(resetView) {
-      renderListings(computeFilteredListings(), !!resetView);
+      // v2.163: main()이 초기 렌더링 완료 후에 applyFocusMarker()를 실행할 수 있도록
+      // renderListings의 Promise를 그대로 반환한다(기존 호출부들은 반환값을 안 써도 무방).
+      return renderListings(computeFilteredListings(), !!resetView);
     }
 
     document.getElementById("btnSearch").addEventListener("click", () => {
@@ -1586,7 +1637,8 @@
         const response = await sendToExtension({ type: "maemulon-ready" });
         if (response && Array.isArray(response.list)) {
           allListings = response.list;
-          refreshMapFilterView(true); // v2.143: 필터 없는 최초 로드 = 전체 목록, 기본 위치로 시작
+          await refreshMapFilterView(true); // v2.143: 필터 없는 최초 로드 = 전체 목록, 기본 위치로 시작
+          applyFocusMarker(); // v2.163: focusId/focusLat/focusLng로 열렸으면 그 매물 위치로 이동+강조
         } else setStatus("확장 프로그램에서 매물 데이터를 받아오지 못했습니다." + (lastSendError ? ` (사유: ${lastSendError})` : ""), true);
       });
     }
