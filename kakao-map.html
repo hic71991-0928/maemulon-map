@@ -256,23 +256,100 @@
      보여주는 방식으로 변경(밸류맵 등 참고 사이트 방식). */
   #mapWrap { flex: 1; min-height: 0; display: flex; width: 100%; }
   #map { flex: 1; min-width: 0; background: var(--toss-bg); }
-  /* v2.144: [요청 반영] ③ 매물목록 패널 - 아직 기능은 없고, 나중에 실제로 붙일 때
-     레이아웃이 안 깨지도록 자리만 미리 예약해 둔 자리표시자(placeholder). 폭은
-     확정값이 아니라 나중에 얼마든지 바뀔 수 있음(지금은 임의로 280px). */
-  #listPanelPlaceholder {
+  /* v2.144: ③ 매물목록 패널 자리(placeholder)였던 자리.
+     v2.154: [기능 추가] 실제 매물 카드 목록으로 교체(okbds.kr 참고 디자인 기반) - 폭은
+     여전히 확정값 아님(지금은 320px). */
+  #listPanel {
     flex: none;
-    width: 280px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+    width: 320px;
     background: var(--toss-bg);
-    border-left: 1px dashed var(--toss-line-strong);
+    border-left: 1px solid var(--toss-line);
+    overflow-y: auto;
+    padding: 8px;
+  }
+  #listPanel .list-empty {
+    text-align: center;
     color: var(--toss-text-mute);
     font-size: 13px;
     line-height: 1.6;
-    padding: 20px;
+    padding: 24px 10px;
   }
+  .list-card {
+    display: flex;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid var(--toss-line);
+    border-radius: 10px;
+    padding: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+  }
+  .list-card:hover { border-color: var(--toss-blue); }
+  .list-card-thumb {
+    position: relative;
+    flex: none;
+    width: 84px;
+    height: 64px;
+    border-radius: 7px;
+    background: var(--toss-line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--toss-text-mute);
+    font-size: 20px;
+    overflow: hidden;
+  }
+  .list-card-ribbon {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  /* v2.154: [기능 추가] ♡(관심매물 표시/토글) - 클릭하면 적색 ♥로 바뀜. 카드 클릭(지도
+     이동)과 겹치지 않도록 클릭 시 이벤트 전파를 막아서 별도로 처리(JS 참고). */
+  .list-card-heart {
+    position: absolute;
+    bottom: 2px;
+    right: 3px;
+    font-size: 15px;
+    color: #fff;
+    text-shadow: 0 0 2px rgba(0,0,0,0.6);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .list-card-heart.active { color: #f04452; }
+  .list-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .list-card-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--toss-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .list-card-meta {
+    font-size: 11px;
+    color: var(--toss-text-mute);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .list-card-price { font-size: 12.5px; margin-top: auto; }
+  .list-card-deal {
+    display: inline-block;
+    background: var(--toss-red);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-right: 4px;
+  }
+  .list-card-price-num { font-weight: 700; color: var(--toss-text); }
   #roadviewSplit {
     display: none;
     flex: 1;
@@ -293,24 +370,8 @@
   }
   #roadviewClose { border: none; background: transparent; color: #fff; cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; }
   #roadviewInner { flex: 1; min-height: 0; }
-  .info-window {
-    padding: 8px 10px;
-    font-size: 12.5px;
-    line-height: 1.5;
-    color: var(--toss-text);
-    max-width: 220px;
-  }
-  .info-window b { display: block; margin-bottom: 3px; }
-  .info-window button {
-    margin-top: 6px;
-    border: none;
-    background: var(--toss-blue);
-    color: #fff;
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    cursor: pointer;
-  }
+  /* v2.154: .info-window 규칙 삭제 - 마커 클릭이 정보창 대신 수정창을 바로 열게
+     바뀌면서(아래 스크립트 참고) 더는 안 쓰임. */
   /* v2.143: 아이콘 13개를 지도 우측 상단 세로 고정 배치(position:fixed)에서 필터바
      아래 가로 1줄로 옮겼었는데, 지도 폭 자체는 안 줄어들고 화면 위아래만 좁아지는
      효과라 요청과 달랐음.
@@ -417,7 +478,7 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.153</span>
+    <span id="buildTag">v2.154</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
@@ -508,9 +569,9 @@
         <label><input type="checkbox" id="chkTerrain" /> 지형도</label>
       </div>
     </div>
-    <!-- v2.144: [요청 반영] ③ 매물목록 패널 자리만 배치(기능 구현 안 함) - 폭은
-         확정값이 아니라 나중에 바뀔 수 있음(지금은 자리 확인용 임시 폭). -->
-    <div id="listPanelPlaceholder">매물목록 패널 자리<br />(추후 구현 예정)</div>
+    <!-- v2.144: ③ 매물목록 패널 자리(placeholder)였던 자리.
+         v2.154: [기능 추가] 실제 매물 카드 목록(js에서 채움). -->
+    <div id="listPanel"></div>
   </div>
   <!-- v2.143: [기능 추가] ①지역선택 필터에 필요한 전국 법정동 DB. popup.html이 쓰는
        것과 같은 파일이며, 이 파일도 kakao-map.html과 함께 GitHub Pages 저장소
@@ -632,8 +693,10 @@
     // 마커/클러스터러/InfoWindow/클릭 리스너를 모두 모듈 스코프로 옮겨서 재사용.
     let currentMarkers = [];
     let currentClusterer = null;
-    let infoWindowInstance = null;
-    let mapClickWired = false;
+    // v2.154: [기능 추가] 매물목록 카드(③)에서 "카드 클릭 -> 해당 마커로 지도 이동"을
+    // 구현하려면 매물번호별 좌표/마커를 알아야 해서, 성공적으로 지도에 찍힌 레코드만
+    // (id, rec, pos, marker) 형태로 따로 보관해둔다.
+    let currentMarkerData = [];
 
     // v2.143: [기능 추가] resetView=false면 지도의 현재 중심/확대 상태를 그대로 두고
     // 마커만 다시 그린다(필터를 바꿀 때마다 매번 압구정역으로 화면이 튀면 불편하므로).
@@ -643,7 +706,7 @@
       if (currentClusterer) { currentClusterer.clear(); currentClusterer = null; }
       currentMarkers.forEach((m) => m.setMap(null));
       currentMarkers = [];
-      if (!infoWindowInstance) infoWindowInstance = new kakao.maps.InfoWindow({ removable: true });
+      currentMarkerData = [];
       const updatedCoords = [];
       let failCount = 0;
 
@@ -661,28 +724,13 @@
         }
         const pos = new kakao.maps.LatLng(lat, lng);
         const marker = new kakao.maps.Marker({ position: pos });
+        // v2.154: [요청 반영] 마커(물방울 모양) 클릭 시 정보창 대신 곧바로 수정창을 연다
+        // (예전엔 정보창을 먼저 열고 그 안의 "수정창 열기" 버튼을 한 번 더 눌러야 했음).
         kakao.maps.event.addListener(marker, "click", () => {
-          const html = `<div class="info-window">
-            <b>${esc(rec["제목"] || "(제목 없음)")}</b>
-            ${esc(rec["거래유형"] || "")} ${esc(rec["매물종류"] || "")}<br/>
-            ${esc(addr)}
-            <br/><button type="button" data-id="${esc(rec.__매물번호)}">수정창 열기</button>
-          </div>`;
-          infoWindowInstance.setContent(html);
-          infoWindowInstance.open(mapInstance, marker);
+          sendToExtension({ type: "maemulon-open-edit", id: rec.__매물번호 });
         });
         currentMarkers.push(marker);
-      }
-
-      // v2.105: 정보창의 "수정창 열기" 버튼은 매번 새로 그려지므로 document 위임 방식으로
-      // 한 번만 연결하고, chrome.runtime.sendMessage로 확장 프로그램에 요청만 보낸다.
-      // v2.143: renderListings가 필터마다 다시 호출되므로, 이 리스너는 최초 1회만 등록.
-      if (!mapClickWired) {
-        mapClickWired = true;
-        document.getElementById("map").addEventListener("click", (e) => {
-          const btn = e.target.closest(".info-window button[data-id]");
-          if (btn) sendToExtension({ type: "maemulon-open-edit", id: btn.dataset.id });
-        });
+        currentMarkerData.push({ id: rec.__매물번호, rec, pos, marker });
       }
 
       if (currentMarkers.length) {
@@ -703,7 +751,85 @@
       // v2.105: 새로 변환한 좌표는 확장 프로그램에 돌려보내 chrome.storage에 캐싱하게 한다
       // (다음에 열 때는 다시 지오코딩하지 않도록).
       if (updatedCoords.length) sendToExtension({ type: "maemulon-coords-update", coords: updatedCoords });
+
+      // v2.154: [기능 추가] ③ 매물목록 카드 - 지도에 실제로 찍힌(주소 변환 성공한) 매물만
+      // 카드로도 보여준다(카드 클릭 -> 지도 이동이 항상 가능하도록).
+      renderListPanel(currentMarkerData);
     }
+
+    // ===================== v2.154: ③ 매물목록 카드 패널 =====================
+    const listPanelEl = document.getElementById("listPanel");
+    // v2.154: [기능 추가] ♡(관심매물) - 클릭하는 즉시 화면에 반영(낙관적 갱신)하고,
+    // background.js를 거쳐 chrome.storage에도 저장한다. allListings/currentMarkerData가
+    // 참조하는 rec 객체는 동일 인스턴스라, 여기서 rec.__관심매물만 바꿔주면 이후 재필터링
+    // 때도(computeFilteredListings가 allListings를 훑을 때) 값이 그대로 유지된다.
+    function toggleFavorite(rec) {
+      rec.__관심매물 = !rec.__관심매물;
+      sendToExtension({ type: "maemulon-toggle-favorite", id: rec.__매물번호, value: rec.__관심매물 });
+      return rec.__관심매물;
+    }
+    function buildListCard(item) {
+      const rec = item.rec;
+      const gradeList = rec["매물등급"] ? rec["매물등급"].split(",").map((s) => s.trim()).filter(Boolean) : [];
+      const firstGrade = gradeList[0];
+      const ribbonHtml = firstGrade
+        ? `<span class="list-card-ribbon" style="background:${GRADE_COLORS[firstGrade] || "#8b95a1"}">${esc(GRADE_SHORT_LABELS[firstGrade] || firstGrade)}</span>`
+        : "";
+      // v2.154: [알려진 제한] 이 페이지는 확장 프로그램에서 매물 데이터를 받아올 때
+      // 용량 문제(v2.138)로 "첨부파일"(사진)이 아예 빠져서 넘어오므로, 실제 사진
+      // 썸네일은 보여줄 수 없다 - 매물종류 첫 글자만 넣은 자리표시자로 대신함.
+      const meta = [rec["대지면적"] || rec["공급면적"] || rec["전용면적"], rec["매물종류"]].filter(Boolean).join(" · ");
+      const priceText = rec["거래유형"] === "월세"
+        ? `${numFmtSimple(rec["보증금"])}/${numFmtSimple(rec["월세"])}`
+        : rec["거래유형"] === "전세"
+        ? numFmtSimple(rec["전세가"])
+        : numFmtSimple(rec["매매가"]);
+      return `<div class="list-card" data-id="${esc(item.id)}">
+        <div class="list-card-thumb">
+          ${ribbonHtml}
+          <span>${esc((rec["매물종류"] || "매").slice(0, 1))}</span>
+          <span class="list-card-heart${rec.__관심매물 ? " active" : ""}" data-id="${esc(item.id)}">${rec.__관심매물 ? "♥" : "♡"}</span>
+        </div>
+        <div class="list-card-body">
+          <div class="list-card-title">${esc(rec["제목"] || "(제목 없음)")}</div>
+          <div class="list-card-meta">${esc(meta)}</div>
+          <div class="list-card-price"><span class="list-card-deal">${esc(rec["거래유형"] || "")}</span><span class="list-card-price-num">${esc(priceText)}</span></div>
+        </div>
+      </div>`;
+    }
+    // v2.154: 숫자에 콤마만 붙이는 간단한 포맷(popup.js의 numFmt는 이 문서에 없음).
+    function numFmtSimple(v) {
+      const n = typeof v === "number" ? v : parseFloat(String(v || "").replace(/,/g, ""));
+      return isNaN(n) || !v ? "" : n.toLocaleString("ko-KR");
+    }
+    function renderListPanel(items) {
+      if (!items.length) {
+        listPanelEl.innerHTML = `<div class="list-empty">지도에 표시된 매물이 없습니다.</div>`;
+        return;
+      }
+      listPanelEl.innerHTML = items.map(buildListCard).join("");
+    }
+    listPanelEl.addEventListener("click", (e) => {
+      const heart = e.target.closest(".list-card-heart");
+      if (heart) {
+        const item = currentMarkerData.find((d) => d.id === heart.dataset.id);
+        if (item) {
+          const active = toggleFavorite(item.rec);
+          heart.classList.toggle("active", active);
+          heart.textContent = active ? "♥" : "♡";
+        }
+        return;
+      }
+      // v2.154: [요청 반영] 카드 클릭(하트 제외) -> 해당 마커로 지도 이동(정보창 없이).
+      const card = e.target.closest(".list-card");
+      if (card) {
+        const item = currentMarkerData.find((d) => d.id === card.dataset.id);
+        if (item) {
+          mapInstance.panTo(item.pos);
+          if (mapInstance.getLevel() > 4) mapInstance.setLevel(4);
+        }
+      }
+    });
 
     // v2.101: 카카오 공식 사이트의 "지도유형" 체크박스(위성도/지적도/지형도)를
     // 직접 구현. 위성도는 기본지도(ROADMAP)<->위성+라벨(HYBRID) 전환, 지적도/지형도는
@@ -1121,6 +1247,16 @@
     ];
     const PROPERTY_TYPE_LABELS = {
       "빌라": "연립빌라다세대", "원룸": "원룸투룸", "건물": "빌딩건물", "토지": "대지임야전답", "상가": "상가점포",
+    };
+    // v2.154: [기능 추가] 매물목록 카드 좌상단 리본에 쓸 매물등급 색상/줄임말.
+    // popup.js/edit.js와 동일(별개 문서라 복제).
+    const GRADE_COLORS = {
+      "추천매물": "#f59f00", "급매물": "#f04452", "보류매물": "#3182f6",
+      "계약된매물": "#17a34a", "전속매물": "#8b3fd6",
+    };
+    const GRADE_SHORT_LABELS = {
+      "일반매물": "일반", "추천매물": "추천", "급매물": "급매", "사업시행부지": "시행부지",
+      "경매공매": "경공매", "보류매물": "보류", "계약된매물": "계약", "교환가능": "교환", "전속매물": "전속",
     };
     const DEAL_TYPE_ITEMS = ["매매", "전세", "월세", "단기임대"];
     const SIDO_SHORT_NAME = {
