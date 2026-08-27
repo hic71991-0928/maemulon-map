@@ -495,7 +495,7 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.163</span>
+    <span id="buildTag">v2.166</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
@@ -760,7 +760,9 @@
       let failCount = 0;
 
       for (const rec of list) {
-        const addr = rec["전체주소"];
+        // v2.165: [기능 삭제] "전체주소" 필드 폐지, "지번" 하나로 통일 - 지오코딩
+        // 원본 주소도 이제 "지번"에서 가져온다.
+        const addr = rec["지번"];
         if (!addr) continue;
         let lat = rec.__위도;
         let lng = rec.__경도;
@@ -794,7 +796,7 @@
         const filtered = allListings.length && list.length !== allListings.length;
         setStatus(`총 ${currentMarkers.length}건 표시됨${failCount ? ` (주소 변환 실패 ${failCount}건 제외)` : ""}${filtered ? ` (전체 ${allListings.length}건 중 필터링됨)` : ""}.`);
       } else {
-        setStatus("지도에 표시할 매물이 없습니다(전체주소가 저장된 매물이 없거나 좌표 변환에 실패했습니다, 또는 필터 조건에 맞는 매물이 없습니다).", true);
+        setStatus("지도에 표시할 매물이 없습니다(지번(주소)이 저장된 매물이 없거나 좌표 변환에 실패했습니다, 또는 필터 조건에 맞는 매물이 없습니다).", true);
       }
 
       // v2.105: 새로 변환한 좌표는 확장 프로그램에 돌려보내 chrome.storage에 캐싱하게 한다
@@ -1323,21 +1325,23 @@
 
     // v2.143: [알려진 제한, 명시] 목록창의 검색(matchesQuery)은 엑셀 전체 컬럼(COLUMN_DEFS)을
     // 대상으로 하지만, 이 페이지는 COLUMN_DEFS를 안 갖고 있어 마커 정보창에 쓰는 핵심
-    // 필드 몇 개로만 검색한다(제목/매물소개/타이틀/거래유형/매물종류/지번/전체주소/지역/중개사).
+    // 필드 몇 개로만 검색한다(제목/매물소개/타이틀/거래유형/매물종류/지번/지역/중개사).
+    // v2.165: [기능 삭제] "전체주소" 필드 폐지 - "지번"이 이미 목록에 있어 그대로 유지.
     function matchesMapQuery(rec, q) {
       if (!q) return true;
-      const haystack = [rec["제목"], rec["매물소개"], rec["타이틀"], rec["거래유형"], rec["매물종류"], rec["지번"], rec["전체주소"], rec["지역"], rec["중개사"], rec["중개사(2)"]]
+      const haystack = [rec["제목"], rec["매물소개"], rec["타이틀"], rec["거래유형"], rec["매물종류"], rec["지번"], rec["지역"], rec["중개사"], rec["중개사(2)"]]
         .filter(Boolean).join(" ").toLowerCase();
       return haystack.includes(q);
     }
     function computeFilteredListings() {
       const q = currentQuery.trim().toLowerCase();
       let pool = allListings.filter((rec) => matchesMapQuery(rec, q));
-      // v2.132 원본과 동일: 구조화된 지역코드가 매물 데이터에 없어 전체주소/지역
+      // v2.132 원본과 동일: 구조화된 지역코드가 매물 데이터에 없어 지번/지역
       // 문자열에 선택한 시군구·읍면동명이 포함되는지로 매칭.
+      // v2.165: "전체주소" 폐지로 매칭 대상도 "지번"으로 변경.
       if (selectedRegion.sgg) {
         pool = pool.filter((rec) => {
-          const addr = `${rec["전체주소"] || ""} ${rec["지역"] || ""}`;
+          const addr = `${rec["지번"] || ""} ${rec["지역"] || ""}`;
           if (!addr.includes(selectedRegion.sgg)) return false;
           if (selectedRegion.emdSet.size === 0) return true;
           return [...selectedRegion.emdSet].some((emd) => addr.includes(emd));
