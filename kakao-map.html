@@ -474,20 +474,21 @@
     white-space: nowrap;
   }
   /* v2.163: [기능 추가] 목록창 "매물on 지도" 아이콘으로 특정 매물 위치를 찍었을 때,
-     기존 파란 물방울 마커와 구분되는 빨간 펄스 마커 - 클릭하면 수정창이 열린다. */
+     기존 파란 물방울 마커와 구분되는 빨간 펄스 마커 - 클릭하면 수정창이 열린다.
+     v2.171: [요청 반영] 크기를 40% 축소(22px -> 13px, 테두리 3px -> 2px). */
   .mm-focus-marker {
-    width: 22px;
-    height: 22px;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
     background: #ff3b30;
-    border: 3px solid #ffffff;
+    border: 2px solid #ffffff;
     box-shadow: 0 0 0 rgba(255, 59, 48, 0.6);
     animation: mm-focus-pulse 1.4s infinite;
     cursor: pointer;
   }
   @keyframes mm-focus-pulse {
     0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.6); }
-    70% { box-shadow: 0 0 0 16px rgba(255, 59, 48, 0); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
     100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
   }
 </style>
@@ -495,7 +496,7 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.167</span>
+    <span id="buildTag">v2.171</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
@@ -715,6 +716,13 @@
     // 마커/클러스터러/InfoWindow/클릭 리스너를 모두 모듈 스코프로 옮겨서 재사용.
     let currentMarkers = [];
     let currentClusterer = null;
+    // v2.171: [요청 반영] 기본 파란 물방울 마커 크기를 40% 축소(카카오 기본 마커
+    // 약 29x42px -> 17x25px). 외부 이미지 대신 이 파일에 이미 있던 방식(SVG를
+    // data URI로 직접 그려 kakao.maps.MarkerImage에 넘기는 방식, vertexImage/
+    // roadviewMarkerImage와 동일 패턴)을 재사용해 외부 자산 의존 없이 크기를
+    // 자유롭게 조절한다. kakao.maps SDK가 로드된 뒤(main() 안에서)에만 만들 수
+    // 있어 처음엔 null, mapInstance 생성 직후 채워짐.
+    let defaultMarkerImage = null;
     // v2.154: [기능 추가] 매물목록 카드(③)에서 "카드 클릭 -> 해당 마커로 지도 이동"을
     // 구현하려면 매물번호별 좌표/마커를 알아야 해서, 성공적으로 지도에 찍힌 레코드만
     // (id, rec, pos, marker) 형태로 따로 보관해둔다.
@@ -727,10 +735,22 @@
     // currentMarkerData에서 찾으면 그 좌표를, 못 찾으면(아직 렌더링 전이거나 필터에
     // 걸러진 경우) URL로 넘어온 원본 좌표를 그대로 쓴다. 클릭하면 수정창이 열린다
     // (기존 마커 클릭과 동일한 동작 - maemulon-open-edit).
-    function applyFocusMarker() {
+    async function applyFocusMarker() {
       if (focusOverlay) { focusOverlay.setMap(null); focusOverlay = null; }
       if (!FOCUS_ID && !(Number.isFinite(FOCUS_LAT) && Number.isFinite(FOCUS_LNG))) return;
-      const target = currentMarkerData.find((d) => d.id === FOCUS_ID);
+      let target = currentMarkerData.find((d) => d.id === FOCUS_ID);
+      // v2.171: [기능 추가] 매물on 지도 아이콘으로 이동했을 때, 그 매물과 같은
+      // "시·군·구"에 등록된 다른 매물도 자동으로 같이 보여준다(요청 반영) - 느슨한
+      // 텍스트 검색(전체 지역필터가 쓰는 방식) 대신 정확한 지역 값으로 매칭해서
+      // 안정적으로 동작하게 한다. 전국 매물을 다 띄우는 대신 이 매물이 속한
+      // 구/시/군 단위로만 좁혀서 보여주므로, 매물이 수천 건이 돼도 이 화면
+      // 자체는 가볍게 유지된다.
+      const sigungu = target && target.rec && target.rec["시·군·구"];
+      if (sigungu) {
+        const scoped = allListings.filter((r) => r["시·군·구"] === sigungu);
+        await renderListings(scoped, false);
+        target = currentMarkerData.find((d) => d.id === FOCUS_ID);
+      }
       const lat = target ? target.pos.getLat() : FOCUS_LAT;
       const lng = target ? target.pos.getLng() : FOCUS_LNG;
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -774,7 +794,8 @@
           updatedCoords.push({ id: rec.__매물번호, lat, lng });
         }
         const pos = new kakao.maps.LatLng(lat, lng);
-        const marker = new kakao.maps.Marker({ position: pos });
+        // v2.171: [요청 반영] 40% 축소한 커스텀 이미지 적용(defaultMarkerImage).
+        const marker = new kakao.maps.Marker({ position: pos, image: defaultMarkerImage });
         // v2.154: [요청 반영] 마커(물방울 모양) 클릭 시 정보창 대신 곧바로 수정창을 연다
         // (예전엔 정보창을 먼저 열고 그 안의 "수정창 열기" 버튼을 한 번 더 눌러야 했음).
         kakao.maps.event.addListener(marker, "click", () => {
@@ -1626,6 +1647,16 @@
           center: new kakao.maps.LatLng(DEFAULT_MAP_LAT, DEFAULT_MAP_LNG), // 매물이 없을 때 기본 중심(압구정역)
           level: DEFAULT_MAP_LEVEL,
         });
+        // v2.171: [요청 반영] 일반 매물 마커 크기 40% 축소용 커스텀 이미지 준비.
+        defaultMarkerImage = new kakao.maps.MarkerImage(
+          "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="25" viewBox="0 0 29 42">' +
+            '<path d="M14.5 0C6.5 0 0 6.5 0 14.5c0 11 14.5 27.5 14.5 27.5s14.5-16.5 14.5-27.5C29 6.5 22.5 0 14.5 0z" fill="#3182f6"/>' +
+            '<circle cx="14.5" cy="14.5" r="6" fill="#fff"/></svg>'
+          ),
+          new kakao.maps.Size(17, 25),
+          { offset: new kakao.maps.Point(8, 25) }
+        );
         // v2.101: 기본값을 지적편집도(지번지도)로 고정해서 켜둠(체크박스도 기본 체크)
         mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
         wireLayerControl();
@@ -1642,7 +1673,7 @@
         if (response && Array.isArray(response.list)) {
           allListings = response.list;
           await refreshMapFilterView(true); // v2.143: 필터 없는 최초 로드 = 전체 목록, 기본 위치로 시작
-          applyFocusMarker(); // v2.163: focusId/focusLat/focusLng로 열렸으면 그 매물 위치로 이동+강조
+          await applyFocusMarker(); // v2.163: focusId/focusLat/focusLng로 열렸으면 그 매물 위치로 이동+강조
         } else setStatus("확장 프로그램에서 매물 데이터를 받아오지 못했습니다." + (lastSendError ? ` (사유: ${lastSendError})` : ""), true);
       });
     }
