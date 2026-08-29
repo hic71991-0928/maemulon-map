@@ -259,9 +259,12 @@
   /* v2.144: ③ 매물목록 패널 자리(placeholder)였던 자리.
      v2.154: [기능 추가] 실제 매물 카드 목록으로 교체(okbds.kr 참고 디자인 기반) - 폭은
      여전히 확정값 아님(지금은 320px). */
+  /* v2.176: [요청 반영] 목록 카드를 3줄->4줄로 재설계하면서 카드 자체가 커져서
+     패널 폭도 같이 넓힘(320px -> 420px, 지도 표시 영역은 그만큼 좁아지는 트레이드오프
+     있음 - 사용자 확인 후 진행). */
   #listPanel {
     flex: none;
-    width: 320px;
+    width: 420px;
     background: var(--toss-bg);
     border-left: 1px solid var(--toss-line);
     overflow-y: auto;
@@ -276,27 +279,32 @@
   }
   .list-card {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     background: #fff;
     border: 1px solid var(--toss-line);
     border-radius: 10px;
-    padding: 8px;
+    padding: 10px;
     margin-bottom: 8px;
     cursor: pointer;
   }
   .list-card:hover { border-color: var(--toss-blue); }
+  /* v2.176: [요청 반영] 사용자가 첨부한 샘플(OK부동산)의 썸네일은 세로로 너무 길어
+     비율이 어색했음("엇박자") - 기존 카드의 가로:세로 비율(84:64 ≈ 1.31:1)은 그대로
+     유지한 채 크기만 키움(108x82, 같은 비율). 실제 사진은 여전히 못 띄운다(v2.138의
+     64MiB 메시지 크기 제한 때문에 이 페이지로는 첨부파일이 아예 안 넘어옴) - 매물종류
+     첫 글자 자리표시자는 그대로 유지. */
   .list-card-thumb {
     position: relative;
     flex: none;
-    width: 84px;
-    height: 64px;
+    width: 108px;
+    height: 82px;
     border-radius: 7px;
     background: var(--toss-line);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--toss-text-mute);
-    font-size: 20px;
+    font-size: 24px;
     overflow: hidden;
   }
   .list-card-ribbon {
@@ -315,30 +323,60 @@
     position: absolute;
     bottom: 2px;
     right: 3px;
-    font-size: 15px;
+    font-size: 17px;
     color: #fff;
     text-shadow: 0 0 2px rgba(0,0,0,0.6);
     cursor: pointer;
     line-height: 1;
   }
   .list-card-heart.active { color: #f04452; }
-  .list-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .list-card-title {
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--toss-text);
+  .list-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; justify-content: center; }
+  /* v2.176: [기능 추가] 목록창(popup.js)의 풍선(title)/메모장 수정 기능을 지도창에도
+     동일하게 반영(요청 반영) - 4줄 중 "매물소개"(단일 필드)만 popup.js의 다른
+     단일필드 칸들처럼 미니 메모장으로 즉석 수정 가능(nls-mini-editable 클래스로
+     표시, hover 시 옅은 배경으로 힌트). 나머지 3줄(매물코드+주소/제목+종류+면적/
+     거래유형+가격)은 여러 필드가 합쳐진 줄이라 popup.js의 "면적요약(area-open)"
+     칸과 동일한 관례를 따라 클릭 시 전체 수정창을 연다(nls-edit-open 클래스). */
+  .nls-mini-editable:hover { background: var(--toss-blue-bg); border-radius: 5px; }
+  .nls-edit-open:hover { background: var(--toss-line); border-radius: 5px; }
+  /* 1번째 줄: 매물코드 + 주소(지번 제외) - 옅은 녹색 바탕의 라벨 형태 */
+  .list-card-row1 {
+    display: inline-block;
+    align-self: flex-start;
+    background: #e2eee5;
+    color: var(--toss-text-mute);
+    font-size: 10.5px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  /* 2번째 줄: 제목 + 물건종류 + 면적 - 진한 청색 강조(요청 반영) */
+  .list-card-row2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2b579a;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .list-card-meta {
+  /* 3번째 줄: 매물소개 */
+  .list-card-row3 {
     font-size: 11px;
     color: var(--toss-text-mute);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .list-card-price { font-size: 12.5px; margin-top: auto; }
+  /* 4번째 줄: 매물종류 + 거래유형 + 가격 */
+  .list-card-row4 { font-size: 12.5px; margin-top: 1px; }
+  .list-card-type {
+    color: var(--toss-text-mute);
+    font-size: 11px;
+    margin-right: 4px;
+  }
   .list-card-deal {
     display: inline-block;
     background: var(--toss-red);
@@ -350,6 +388,52 @@
     margin-right: 4px;
   }
   .list-card-price-num { font-weight: 700; color: var(--toss-text); }
+  /* v2.176: [기능 추가] 매물목록창에서 특정 매물을 지도로 이동했을 때(FOCUS_ID),
+     목록 패널의 해당 카드도 같이 강조(요청 반영) - 마커의 빨간 펄스(#mm-focus-marker)
+     와 색을 맞춰 진한 빨간 테두리 + 옅은 빨간 바탕으로 표시. */
+  .list-card.list-card-focus {
+    border: 2px solid #ff0000;
+    background: #fff0f0;
+  }
+  /* v2.176: [기능 추가] "매물소개" 줄 클릭 시 뜨는 즉석 미니 메모장 - popup.js/
+     popup.css의 #inlineEditor와 동일한 형태(별도 문서라 스타일만 복제). */
+  #miniEditor {
+    position: fixed;
+    z-index: 3000;
+    width: 260px;
+    background: #fff;
+    border: 1px solid var(--toss-line-strong, #d1d6db);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(25, 31, 40, 0.2);
+    padding: 10px;
+    display: none;
+  }
+  #miniEditor textarea {
+    width: 100%;
+    min-height: 80px;
+    font-size: 13px;
+    padding: 8px 10px;
+    border: 1px solid var(--toss-line-strong, #d1d6db);
+    border-radius: 8px;
+    font-family: inherit;
+    background: var(--toss-bg);
+    color: var(--toss-text);
+    resize: vertical;
+    box-sizing: border-box;
+  }
+  #miniEditor textarea:focus { outline: none; border-color: var(--toss-blue); background: #fff; }
+  #miniEditorActions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+  #miniEditorActions button {
+    border: none;
+    background: var(--toss-line);
+    color: var(--toss-text-sub);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #miniEditorActions button.primary { background: var(--toss-blue); color: #fff; }
   #roadviewSplit {
     display: none;
     flex: 1;
@@ -496,7 +580,7 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.172</span>
+    <span id="buildTag">v2.176</span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
@@ -590,6 +674,14 @@
     <!-- v2.144: ③ 매물목록 패널 자리(placeholder)였던 자리.
          v2.154: [기능 추가] 실제 매물 카드 목록(js에서 채움). -->
     <div id="listPanel"></div>
+    <!-- v2.176: [기능 추가] "매물소개" 즉석 미니 메모장(popup.js의 #inlineEditor와 동일 패턴) -->
+    <div id="miniEditor">
+      <textarea id="miniEditorInput"></textarea>
+      <div id="miniEditorActions">
+        <button type="button" id="miniEditorCancel">취소</button>
+        <button type="button" id="miniEditorSave" class="primary">저장</button>
+      </div>
+    </div>
   </div>
   <!-- v2.143: [기능 추가] ①지역선택 필터에 필요한 전국 법정동 DB. popup.html이 쓰는
        것과 같은 파일이며, 이 파일도 kakao-map.html과 함께 GitHub Pages 저장소
@@ -840,6 +932,36 @@
       sendToExtension({ type: "maemulon-toggle-favorite", id: rec.__매물번호, value: rec.__관심매물 });
       return rec.__관심매물;
     }
+    // v2.176: [기능 추가] "매물소개" 표시용 - content.js/popup.js/edit.js에 이미 있는
+    // computeIntro()와 동일 로직을 이 문서에도 복제(별도 문서라 공유 불가, 4번째 복제본 -
+    // 저 세 곳을 고칠 때 여기도 같이 고쳐야 함). v2.173에서 고친 "OO역N분" 예외 처리도
+    // 그대로 포함.
+    const MAP_UI_BOILERPLATE_RE = /^(알림관심매물|알림|공유하기|관심매물|매물\s*보러가기|면적\s*단위\s*변경\s*평?|평|창닫기|도움말(\s*보기)?|평당가\s*도움말|보기|이미지|매물\s*대표\s*이미지\s*\d*\s*이미지|매물\d*|개|\d+|[\d,]+\s*(억\s*)?[\d,]*\s*만?\s*원?\s*\/\s*3\.3\s*(㎡|m²)(평당가\s*도움말)?)$/;
+    const MAP_PRICE_LINE_RE = /^(매매|전세|월세|단기임대)\s*[\d,]/;
+    const MAP_SPEC_LINE_RE = /^[가-힣/]{2,10}\d/;
+    const MAP_STATION_DISTANCE_RE = /^[가-힣]{1,10}역\s*\d+\s*분/;
+    function computeIntroMap(rec) {
+      if (rec.__매물소개Manual) return rec["매물소개"] || "";
+      const raw = rec["타이틀"] || "";
+      if (!raw) return rec["매물소개"] || "";
+      const confirmMatch = raw.match(/확인매물|(^|\n)등록\s+\d{4}\./);
+      const text = confirmMatch ? raw.slice(0, confirmMatch.index) : raw;
+      const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+      for (let i = lines.length - 1; i >= 0 && i >= lines.length - 6; i--) {
+        const l = lines[i].replace(/^소유자\s*/, "").trim();
+        const looksLikeStationDistance = MAP_STATION_DISTANCE_RE.test(l);
+        if (!l || MAP_UI_BOILERPLATE_RE.test(l) || MAP_PRICE_LINE_RE.test(l) || (MAP_SPEC_LINE_RE.test(l) && !looksLikeStationDistance)) continue;
+        if (l.length < 4) continue;
+        if (l.length >= 12 || !/[:：]|㎡|\d\s*층|\d\s*억|\d\s*(만)?원|\d\s*년차/.test(l)) return l;
+      }
+      return rec["매물소개"] || "";
+    }
+    // v2.176: [기능 추가] 목록 카드를 4줄로 재설계(요청 반영, OK부동산 디자인 참고).
+    // 1번째 줄(매물코드+주소)/2번째 줄(제목+종류+면적)/4번째 줄(거래유형+가격)은
+    // 여러 필드가 합쳐진 줄이라 popup.js의 "면적요약(area-open)" 칸과 동일한 관례를
+    // 따라 클릭 시 전체 수정창을 연다(nls-edit-open). 3번째 줄(매물소개)만 단일
+    // 필드라 popup.js의 다른 단일필드 칸들처럼 즉석 미니 메모장으로 수정 가능
+    // (nls-mini-editable, data-mini-field="매물소개").
     function buildListCard(item) {
       const rec = item.rec;
       const gradeList = rec["매물등급"] ? rec["매물등급"].split(",").map((s) => s.trim()).filter(Boolean) : [];
@@ -850,22 +972,36 @@
       // v2.154: [알려진 제한] 이 페이지는 확장 프로그램에서 매물 데이터를 받아올 때
       // 용량 문제(v2.138)로 "첨부파일"(사진)이 아예 빠져서 넘어오므로, 실제 사진
       // 썸네일은 보여줄 수 없다 - 매물종류 첫 글자만 넣은 자리표시자로 대신함.
-      const meta = [rec["대지면적"] || rec["공급면적"] || rec["전용면적"], rec["매물종류"]].filter(Boolean).join(" · ");
+      // v2.176: [요청 반영] 1번째 줄 - 매물코드 + 주소(지번의 구체적 번지는 제외,
+      // 시·도/시·군·구/법정동까지만 - 첨부해주신 참고 이미지의 "서울 용산구 용문동"
+      // 형식과 동일).
+      const addrShort = [rec["시·도"], rec["시·군·구"], rec["법정동"]].filter(Boolean).join(" ");
+      const row1Text = [rec["매물코드"] ? `<${rec["매물코드"]}>` : "", addrShort].filter(Boolean).join(" ") || "(주소 없음)";
+      // 2번째 줄 - 제목 + 물건종류 + 면적
+      const areaVal = rec["공급면적"] || rec["전용면적"] || rec["대지면적"];
+      const row2Text = [rec["제목"], rec["매물종류"], areaVal ? `${areaVal}㎡` : ""].filter(Boolean).join(" · ") || "(제목 없음)";
+      // 3번째 줄 - 매물소개
+      const row3Text = computeIntroMap(rec) || "(매물소개 없음)";
+      // 4번째 줄 - 매물종류 + 거래유형 + 가격
       const priceText = rec["거래유형"] === "월세"
         ? `${numFmtSimple(rec["보증금"])}/${numFmtSimple(rec["월세"])}`
         : rec["거래유형"] === "전세"
         ? numFmtSimple(rec["전세가"])
         : numFmtSimple(rec["매매가"]);
-      return `<div class="list-card" data-id="${esc(item.id)}">
+      const isFocused = FOCUS_ID && rec.__매물번호 === FOCUS_ID;
+      return `<div class="list-card${isFocused ? " list-card-focus" : ""}" data-id="${esc(item.id)}">
         <div class="list-card-thumb">
           ${ribbonHtml}
           <span>${esc((rec["매물종류"] || "매").slice(0, 1))}</span>
           <span class="list-card-heart${rec.__관심매물 ? " active" : ""}" data-id="${esc(item.id)}">${rec.__관심매물 ? "♥" : "♡"}</span>
         </div>
         <div class="list-card-body">
-          <div class="list-card-title">${esc(rec["제목"] || "(제목 없음)")}</div>
-          <div class="list-card-meta">${esc(meta)}</div>
-          <div class="list-card-price"><span class="list-card-deal">${esc(rec["거래유형"] || "")}</span><span class="list-card-price-num">${esc(priceText)}</span></div>
+          <div class="list-card-row1 nls-edit-open" title="${esc(row1Text)}">${esc(row1Text)}</div>
+          <div class="list-card-row2 nls-edit-open" title="${esc(row2Text)}">${esc(row2Text)}</div>
+          <div class="list-card-row3 nls-mini-editable" data-mini-field="매물소개" title="${esc(row3Text)}">${esc(row3Text)}</div>
+          <div class="list-card-row4 nls-edit-open" title="${esc([rec["매물종류"], rec["거래유형"], priceText].filter(Boolean).join(" "))}">
+            <span class="list-card-type">${esc(rec["매물종류"] || "")}</span><span class="list-card-deal">${esc(rec["거래유형"] || "")}</span><span class="list-card-price-num">${esc(priceText)}</span>
+          </div>
         </div>
       </div>`;
     }
@@ -880,7 +1016,52 @@
         return;
       }
       listPanelEl.innerHTML = items.map(buildListCard).join("");
+      // v2.176: [기능 추가] 강조된(FOCUS_ID) 카드가 있으면 목록 패널 스크롤을 그
+      // 카드로 자동 이동 - 목록이 길면 강조 표시만으로는 화면 밖이라 안 보일 수 있음.
+      const focusedCard = listPanelEl.querySelector(".list-card-focus");
+      if (focusedCard) focusedCard.scrollIntoView({ block: "nearest" });
     }
+    // v2.176: [기능 추가] "매물소개" 즉석 미니 메모장 - popup.js의 openInlineEditor/
+    // saveInlineEditor와 동일한 패턴(별도 문서라 로직만 복제). 저장은 이 페이지가
+    // chrome.storage에 직접 접근할 수 없어(외부 페이지) background.js에 새로 추가한
+    // "maemulon-update-field" 메시지로 위임한다(기존 maemulon-toggle-favorite와 동일한
+    // 경유 구조).
+    const miniEditorEl = document.getElementById("miniEditor");
+    const miniEditorInputEl = document.getElementById("miniEditorInput");
+    let miniEditorTarget = null; // { id, field }
+    function openMiniEditor(cardEl, rowEl, rec, field) {
+      miniEditorTarget = { id: rec.__매물번호, field };
+      miniEditorInputEl.value = field === "매물소개" ? computeIntroMap(rec) : (rec[field] || "");
+      const rect = rowEl.getBoundingClientRect();
+      const left = Math.min(rect.left, window.innerWidth - 280);
+      const top = Math.min(rect.bottom + 4, window.innerHeight - 160);
+      miniEditorEl.style.left = Math.max(4, left) + "px";
+      miniEditorEl.style.top = Math.max(4, top) + "px";
+      miniEditorEl.style.display = "block";
+      miniEditorInputEl.focus();
+      miniEditorInputEl.select();
+    }
+    function closeMiniEditor() {
+      miniEditorEl.style.display = "none";
+      miniEditorTarget = null;
+    }
+    async function saveMiniEditor() {
+      if (!miniEditorTarget) return;
+      const { id, field } = miniEditorTarget;
+      const value = miniEditorInputEl.value;
+      const item = currentMarkerData.find((d) => d.id === id);
+      const res = await sendToExtension({ type: "maemulon-update-field", id, field, value });
+      if (!res || !res.ok) { alert("저장에 실패했습니다. 잠시 후 다시 시도해주세요."); return; }
+      // 낙관적 갱신: 화면에 보이는 rec 객체도 같이 갱신(다음 렌더링부터 바로 반영).
+      if (item) {
+        item.rec[field] = value;
+        if (field === "매물소개") item.rec.__매물소개Manual = true;
+      }
+      closeMiniEditor();
+      renderListPanel(currentMarkerData);
+    }
+    document.getElementById("miniEditorSave").addEventListener("click", saveMiniEditor);
+    document.getElementById("miniEditorCancel").addEventListener("click", closeMiniEditor);
     listPanelEl.addEventListener("click", (e) => {
       const heart = e.target.closest(".list-card-heart");
       if (heart) {
@@ -892,7 +1073,24 @@
         }
         return;
       }
-      // v2.154: [요청 반영] 카드 클릭(하트 제외) -> 해당 마커로 지도 이동(정보창 없이).
+      // v2.176: [기능 추가] "매물소개" 줄 - 즉석 미니 메모장으로 수정.
+      const miniField = e.target.closest(".nls-mini-editable");
+      if (miniField) {
+        const cardEl = miniField.closest(".list-card");
+        const item = currentMarkerData.find((d) => d.id === cardEl.dataset.id);
+        if (item) openMiniEditor(cardEl, miniField, item.rec, miniField.dataset.miniField);
+        return;
+      }
+      // v2.176: [기능 추가] 여러 필드가 합쳐진 줄(매물코드+주소/제목+종류+면적/
+      // 거래유형+가격) - popup.js의 area-open 관례와 동일하게 전체 수정창을 연다.
+      const editOpen = e.target.closest(".nls-edit-open");
+      if (editOpen) {
+        const cardEl = editOpen.closest(".list-card");
+        if (cardEl) sendToExtension({ type: "maemulon-open-edit", id: cardEl.dataset.id });
+        return;
+      }
+      // v2.154: [요청 반영] 카드의 나머지 부분(썸네일 등) 클릭 -> 해당 마커로 지도 이동
+      // (정보창 없이). 4줄이 각각 위에서 처리되므로 여기는 주로 썸네일 클릭이 해당.
       const card = e.target.closest(".list-card");
       if (card) {
         const item = currentMarkerData.find((d) => d.id === card.dataset.id);
@@ -1348,9 +1546,20 @@
     // 대상으로 하지만, 이 페이지는 COLUMN_DEFS를 안 갖고 있어 마커 정보창에 쓰는 핵심
     // 필드 몇 개로만 검색한다(제목/매물소개/타이틀/거래유형/매물종류/지번/지역/중개사).
     // v2.165: [기능 삭제] "전체주소" 필드 폐지 - "지번"이 이미 목록에 있어 그대로 유지.
+    // v2.176: [버그 수정] 검색 대상 필드가 9개뿐이라 매물목록창(popup.js의 COLUMN_DEFS
+    // 전체 - 건축물정보/URL/중개사(1)/평당가 등)보다 좁았던 문제 - "매물목록창과 검색
+    // 방법을 동일하게" 요청에 맞춰 popup.js와 동일한 필드 목록으로 확장.
+    const MAP_SEARCH_FIELDS = [
+      "제목", "거래유형", "매물종류", "매매가", "전세가", "월세", "대지면적", "연면적",
+      "공급면적", "전용면적", "지상/지하", "해당층/총층", "평당가", "보증금", "월임차료",
+      "수익율", "월관리비", "입주가능일", "지역", "지번", "시·도", "시·군·구", "법정동",
+      "중개사(2)", "URL", "기본정보", "건축물정보", "타이틀", "중개사(1)", "등록시간", "등록일자",
+    ];
     function matchesMapQuery(rec, q) {
       if (!q) return true;
-      const haystack = [rec["제목"], rec["매물소개"], rec["타이틀"], rec["거래유형"], rec["매물종류"], rec["지번"], rec["지역"], rec["중개사"], rec["중개사(2)"]]
+      const haystack = MAP_SEARCH_FIELDS
+        .map((key) => rec[key])
+        .concat([computeIntroMap(rec)])
         .filter(Boolean).join(" ").toLowerCase();
       return haystack.includes(q);
     }
