@@ -144,6 +144,33 @@
   .view-switch-btn:hover:not(:disabled) { border-color: var(--toss-blue); }
   .view-switch-btn:disabled { cursor: default; }
   .view-switch-btn.view-switch-active { background: #191f28; border-color: #191f28; color: #fff; }
+  /* v2.228: [기능 추가] 도움말 아이콘 버튼 + 클릭 시 뜨는 안내 풍선(popup.html과 동일) */
+  .help-icon-btn {
+    border: none;
+    background: transparent;
+    padding: 0;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .help-icon-btn img { width: 22px; height: 22px; }
+  #helpTooltip {
+    position: fixed;
+    z-index: 4000;
+    max-width: 260px;
+    background: #fff;
+    border: 1px solid var(--toss-line-strong);
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(25, 31, 40, 0.2);
+    padding: 12px 14px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--toss-text);
+  }
 
   /* v2.132/v2.142 popup.css 이식: ①지역/②③거래유형·매물종류 팝업 */
   .filter-popup {
@@ -288,12 +315,14 @@
   /* v2.217: [요청 반영] 테두리 색이 너무 옅어서(var(--toss-line), #f2f4f6) 잘 안 보인다는
      피드백 - 더 뚜렷한 회색(var(--toss-line-stronger), #aeb9ca)으로 교체.
      v2.218: [요청 반영] 사용자 지정 색상(#8997A7)으로 재변경 + 두께 1px->2px(2배). */
+  /* v2.228: [요청 반영] 위아래 여백이 너무 많다는 피드백 - 위아래만 10px->5px로
+     줄여서 한 화면에 카드가 더 많이 들어가게(좌우는 그대로 10px 유지). */
   .list-card {
     display: flex;
     gap: 10px;
     background: #fff;
     border: 2px solid #8997A7;
-    padding: 10px;
+    padding: 5px 10px;
     cursor: pointer;
   }
   .list-card:hover { border-color: var(--toss-blue); }
@@ -491,7 +520,8 @@
   #attachPopup {
     position: fixed;
     z-index: 3000;
-    width: 280px;
+    /* v2.228: [요청 반영] 너무 좁아서 파일명이 잘 안 보인다는 피드백 - 40px 더 넓게 */
+    width: 320px;
     max-height: 360px;
     overflow-y: auto;
     background: #fff;
@@ -743,10 +773,17 @@
       <button type="button" id="btnAreaUnit" class="btn-area-unit" title="면적 단위 표시 전환(㎡ ↔ 평)">⟳ ㎡</button>
     </div>
     <div class="view-switch">
+      <!-- v2.228: [기능 추가] 도움말 - 클릭하면 짧은 안내문을 풍선으로 보여줌
+           (popup.html과 동일 기능, 아이콘은 base64로 직접 넣음 - 이 파일은
+           GitHub Pages 외부 호스팅이라 확장 프로그램 안의 icons/ 폴더를 못 씀). -->
+      <button type="button" id="btnHelp" class="help-icon-btn" title="도움말"><img id="helpIconImg" alt="도움말" /></button>
       <button type="button" id="btnSortView" class="view-switch-btn" title="정렬(준비 중)" disabled>⇅</button>
       <button type="button" id="btnGoList" class="view-switch-btn" title="매물목록 열기">목록</button>
       <button type="button" id="btnGoMap" class="view-switch-btn view-switch-active" title="현재 화면" disabled>지도</button>
     </div>
+  </div>
+  <div id="helpTooltip" style="display:none">
+    <div id="helpTooltipText"></div>
   </div>
   <!-- v2.132/v2.142 popup.html 이식: ①지역 선택 팝업 -->
   <div id="regionFilterPopup" class="filter-popup" style="display:none">
@@ -869,7 +906,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.227";
+    const KAKAO_MAP_VERSION = "2.228";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1419,7 +1456,7 @@
       attachPopupTarget = { id: item.id, cardEl };
       attachPopupTitleEl.textContent = item.rec["제목"] || "(제목 없음)";
       const rect = cardEl.getBoundingClientRect();
-      attachPopupEl.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 300)) + "px";
+      attachPopupEl.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 330)) + "px";
       attachPopupEl.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 360)) + "px";
       attachPopupEl.style.display = "block";
       attachPopupListEl.innerHTML = `<div class="attach-empty">불러오는 중...</div>`;
@@ -2343,6 +2380,30 @@
     // "정렬" 버튼은 이번엔 자리만(disabled), 기능은 다음 작업에서 구현. =====
     document.getElementById("btnGoList").addEventListener("click", () => {
       sendToExtension({ type: "maemulon-open-list" });
+    });
+
+    // v2.228: [기능 추가] 도움말 아이콘 - 클릭하면 짧은 안내문을 풍선으로 보여준다
+    // (popup.js와 동일 로직 복제, 별도 문서라 공유 불가). 아이콘은 이 파일이 외부
+    // 호스팅(GitHub Pages)이라 확장 프로그램 안의 icons/ 폴더를 못 써서 base64로 직접 넣음.
+    const HELP_TEXT = "이미지 파일과 PDF 파일은 1클릭으로 열리고, 문서 파일들은 다운로드후 열립니다.";
+    document.getElementById("helpIconImg").src = "data:image/png;base64,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";
+    const helpTooltipEl2 = document.getElementById("helpTooltip");
+    const helpTooltipTextEl2 = document.getElementById("helpTooltipText");
+    helpTooltipTextEl2.textContent = HELP_TEXT;
+    const btnHelpEl2 = document.getElementById("btnHelp");
+    btnHelpEl2.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = helpTooltipEl2.style.display !== "none";
+      if (isOpen) { helpTooltipEl2.style.display = "none"; return; }
+      const rect = btnHelpEl2.getBoundingClientRect();
+      helpTooltipEl2.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 280)) + "px";
+      helpTooltipEl2.style.top = Math.round(rect.bottom + 6) + "px";
+      helpTooltipEl2.style.display = "block";
+    });
+    document.addEventListener("mousedown", (e) => {
+      if (helpTooltipEl2.style.display === "none") return;
+      if (helpTooltipEl2.contains(e.target) || e.target.closest("#btnHelp")) return;
+      helpTooltipEl2.style.display = "none";
     });
 
     async function main() {
