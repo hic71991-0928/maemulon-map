@@ -403,14 +403,16 @@
   }
   /* 4번째 줄: 매물종류 + 거래유형 + 가격 */
   .list-card-row4 { font-size: 14.5px; margin-top: 1px; }
+  /* v2.221: [요청 반영] "매물종류"와 배지 사이 간격을 기존(4px)의 약 5배(20px)로 */
   .list-card-type {
     color: #191F28;
     font-size: 13px;
-    margin-right: 4px;
+    margin-right: 20px;
   }
   /* v2.217: [요청 반영] 배지(버튼) 배경색을 거래유형별로 다르게 - 기본값(고정 빨강)은
      거래유형 클래스가 없는 예외 케이스만 남음.
      v2.218: [요청 반영] 사용자 지정 색상으로 교체(매매=#C40000/전세=#533BFF/월세=#9070E4). */
+  /* v2.221: [요청 반영] 배지와 거래금액 사이 간격도 기존(4px)의 약 5배(20px)로 */
   .list-card-deal {
     display: inline-block;
     background: var(--toss-red);
@@ -419,7 +421,7 @@
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 4px;
-    margin-right: 4px;
+    margin-right: 20px;
   }
   .list-card-maemae .list-card-deal { background: #C40000; }
   .list-card-jeonse .list-card-deal { background: #533BFF; }
@@ -484,6 +486,82 @@
     cursor: pointer;
   }
   #miniEditorActions button.primary { background: var(--toss-blue); color: #fff; }
+  /* v2.221: [기능 추가] 썸네일 클릭 시 뜨는 "파일/사진 목록" 풍선. #miniEditor와
+     동일한 위치 지정 방식(고정 위치, JS에서 left/top 계산). */
+  #attachPopup {
+    position: fixed;
+    z-index: 3000;
+    width: 280px;
+    max-height: 360px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid var(--toss-line-strong, #d1d6db);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(25, 31, 40, 0.2);
+    padding: 10px;
+    display: none;
+  }
+  #attachPopupHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  #attachPopupTitle { font-size: 13.5px; font-weight: 700; color: var(--toss-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #attachPopupClose { border: none; background: transparent; color: var(--toss-text-mute); font-size: 14px; cursor: pointer; flex: none; }
+  #attachPopup .attach-controls { display: flex; align-items: center; }
+  #attachPopup #attachPopupAddBtn {
+    border: 1px solid #f0a4ab;
+    background: var(--toss-red-bg);
+    color: var(--toss-red);
+    padding: 0 12px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #attachPopup #attachPopupAddBtn:hover { background: #ffe3e5; }
+  #attachPopupDropZone {
+    margin-top: 8px;
+    border: 1px dashed #e8a487;
+    border-radius: 10px;
+    padding: 6px 10px;
+    background: #fbeada;
+  }
+  #attachPopupDropZone.drop-zone-active { border-color: var(--toss-blue); background: var(--toss-blue-bg); }
+  #attachPopupDropZone .paste-target-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    color: var(--toss-text-mute);
+    box-sizing: border-box;
+  }
+  #attachPopupList { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  #attachPopupList .attach-empty { text-align: center; color: var(--toss-text-mute); font-size: 12px; padding: 10px 0; }
+  #attachPopupList .attach-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    background: var(--toss-bg);
+    border: 1px solid var(--toss-line-strong, #d1d6db);
+    border-radius: 8px;
+    font-size: 12.5px;
+  }
+  #attachPopupList .attach-thumb { width: 26px; height: 26px; object-fit: cover; border-radius: 5px; flex-shrink: 0; }
+  #attachPopupList .attach-file-icon { width: 26px; text-align: center; flex-shrink: 0; }
+  #attachPopupList .attach-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--toss-text); cursor: pointer; }
+  #attachPopupList .attach-size { color: var(--toss-text-mute); font-size: 11px; flex-shrink: 0; }
+  #attachPopupList .attach-download { border: none; background: transparent; color: #8b3fd6; font-weight: 700; text-decoration: none; flex-shrink: 0; cursor: pointer; }
+  #attachPopupList .attach-remove {
+    border: none;
+    background: var(--toss-line);
+    color: var(--toss-text-sub);
+    border-radius: 6px;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  #attachPopupList .attach-remove:hover { background: var(--toss-red-bg); color: var(--toss-red); }
+  .list-card-thumb-img { width: 100%; height: 100%; object-fit: cover; }
   #roadviewSplit {
     display: none;
     flex: 1;
@@ -630,7 +708,7 @@
 <body>
   <div id="topbar">
     <strong>매물on 지도</strong>
-    <span id="buildTag">v2.176</span>
+    <span id="buildTag"></span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
   </div>
   <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
@@ -732,6 +810,22 @@
         <button type="button" id="miniEditorSave" class="primary">저장</button>
       </div>
     </div>
+    <!-- v2.221: [기능 추가] 썸네일(사진) 클릭 시 뜨는 "파일/사진 목록" 풍선 -
+         매물목록창(popup.js의 attachListPopup)과 같은 구성. -->
+    <div id="attachPopup">
+      <div id="attachPopupHeader">
+        <span id="attachPopupTitle"></span>
+        <button type="button" id="attachPopupClose" title="닫기">✕</button>
+      </div>
+      <div class="attach-controls">
+        <button type="button" id="attachPopupAddBtn">📎 파일 또는 사진 추가</button>
+        <input type="file" id="attachPopupFileInput" multiple style="display:none" />
+      </div>
+      <div id="attachPopupDropZone" class="drop-zone">
+        <input type="text" class="paste-target-input" placeholder="박스안에 사진을 붙여넣기(Ctrl+V)해도 추가됩니다" readonly />
+      </div>
+      <div id="attachPopupList"></div>
+    </div>
   </div>
   <!-- v2.143: [기능 추가] ①지역선택 필터에 필요한 전국 법정동 DB. popup.html이 쓰는
        것과 같은 파일이며, 이 파일도 kakao-map.html과 함께 GitHub Pages 저장소
@@ -745,6 +839,17 @@
     // externally_connectable 설정 덕분에 chrome.runtime.sendMessage(확장ID, ...)로
     // 백그라운드 서비스 워커(background.js)와 직접 대화한다(예전엔 보이지 않아야 할
     // "다리 역할" 창을 하나 더 띄웠는데, 화면에 계속 잠깐씩 보이는 문제가 있어 이 방식으로 교체).
+
+    // v2.221: [버그 수정] 화면 왼쪽 위 버전 표시(#buildTag)가 HTML에 "v2.176"이라고
+    // 글자 그대로 박혀있어서, v2.216~v2.220 여러 라운드 동안 실제로는 계속 바뀌고
+    // 있었는데도 화면엔 계속 예전 번호가 뜨는 채로 방치돼 있었음(재업로드가 실제로
+    // 잘 됐는지 확인할 방법이 없어져서 계속 혼동의 원인이 됨) - popup.js/content.js의
+    // APP_VERSION과 동일한 방식으로 상수 하나로 통일하고, 화면 표시는 항상 이 상수에서
+    // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
+    // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
+    // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
+    const KAKAO_MAP_VERSION = "2.221";
+    document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
     const KAKAO_JS_KEY = "04fee5ca8c58b6d47d78a373007e8854";
@@ -1013,11 +1118,14 @@
       return rec["매물소개"] || "";
     }
     // v2.176: [기능 추가] 목록 카드를 4줄로 재설계(요청 반영, OK부동산 디자인 참고).
-    // 1번째 줄(매물코드+주소)/2번째 줄(제목+종류+면적)/4번째 줄(거래유형+가격)은
-    // 여러 필드가 합쳐진 줄이라 popup.js의 "면적요약(area-open)" 칸과 동일한 관례를
-    // 따라 클릭 시 전체 수정창을 연다(nls-edit-open). 3번째 줄(매물소개)만 단일
-    // 필드라 popup.js의 다른 단일필드 칸들처럼 즉석 미니 메모장으로 수정 가능
-    // (nls-mini-editable, data-mini-field="매물소개").
+    // v2.221: [요청 반영] 클릭 위치 재배치 - 1번째 줄(매물코드+주소)/2번째 줄(제목)은
+    // 지도 이동(별도 클래스 없이 기본 카드 클릭으로 흡수), 3번째 줄(매물소개)은
+    // 그대로 즉석 미니 메모장(nls-mini-editable), 4번째 줄(매물종류+거래유형+가격)만
+    // 전체 수정창을 연다(nls-edit-open). 썸네일은 파일/사진 풍선(nls-thumb-open).
+    // v2.221: [기능 추가] 썸네일에 실제 첫 번째 사진을 보여주기 위한 캐시 - 매물번호별로
+    // 한 번 불러온 첨부파일 목록을 여기 담아두고(fetchAttachments 참고), 재렌더링 시
+    // 매번 다시 요청하지 않고 이 캐시를 먼저 확인한다.
+    let attachmentsById = {};
     function buildListCard(item) {
       const rec = item.rec;
       const gradeList = rec["매물등급"] ? rec["매물등급"].split(",").map((s) => s.trim()).filter(Boolean) : [];
@@ -1025,9 +1133,11 @@
       const ribbonHtml = firstGrade
         ? `<span class="list-card-ribbon" style="background:${GRADE_COLORS[firstGrade] || "#8b95a1"}">${esc(GRADE_SHORT_LABELS[firstGrade] || firstGrade)}</span>`
         : "";
-      // v2.154: [알려진 제한] 이 페이지는 확장 프로그램에서 매물 데이터를 받아올 때
-      // 용량 문제(v2.138)로 "첨부파일"(사진)이 아예 빠져서 넘어오므로, 실제 사진
-      // 썸네일은 보여줄 수 없다 - 매물종류 첫 글자만 넣은 자리표시자로 대신함.
+      // v2.221: [기능 추가] v2.154 당시엔 확장 프로그램이 데이터를 받아올 때
+      // 용량 문제(v2.138)로 첨부파일을 아예 안 보내서 실제 사진 썸네일이 불가능했는데,
+      // 이제 매물 하나씩 따로 요청하는 방식(fetchAttachments)으로 우회해서 실제
+      // 사진을 보여준다(위 attachmentsById 캐시 참고). 사진이 없으면 여전히 매물종류
+      // 첫 글자 자리표시자.
       // v2.176: [요청 반영] 1번째 줄 - 매물코드 + 주소(지번의 구체적 번지는 제외,
       // 시·도/시·군·구/법정동까지만 - 첨부해주신 참고 이미지의 "서울 용산구 용문동"
       // 형식과 동일).
@@ -1052,15 +1162,26 @@
       // v2.216: [요청 반영] 매물목록 팝업 표(popup.css의 deal-row-*)와 동일하게
       // 거래유형별 카드 배경색을 적용하기 위한 클래스.
       const dealCardClass = DEAL_CARD_CLASS[rec["거래유형"]] || "";
+      // v2.221: [기능 추가] 첨부파일을 이미 한 번 불러온 매물(attachmentsById 캐시에
+      // 있음)이면, 그 중 첫 번째 "사진"을 썸네일로 실제로 보여준다(없으면 지금처럼
+      // 매물종류 첫 글자 자리표시자). 아직 한 번도 안 불러온 매물은 카드가 그려진
+      // 뒤(renderListPanel 다음) 별도로 조용히 불러와서, 오면 이 썸네일 자리만
+      // 다시 채워넣는다(loadThumbForCard 참고) - 전체를 한 번에 다 받지 않는 이유는
+      // v2.138 메시지 크기 제한 때문(위 background.js 주석 참고).
+      const cachedAttachments = attachmentsById[item.id];
+      const firstImage = cachedAttachments && cachedAttachments.find((a) => (a.type || "").startsWith("image/"));
+      const thumbInner = firstImage
+        ? `<img src="${firstImage.dataUrl}" alt="" class="list-card-thumb-img" />`
+        : `<span>${esc((rec["매물종류"] || "매").slice(0, 1))}</span>`;
       return `<div class="list-card${dealCardClass ? " " + dealCardClass : ""}${isFocused ? " list-card-focus" : ""}" data-id="${esc(item.id)}">
-        <div class="list-card-thumb">
+        <div class="list-card-thumb nls-thumb-open" data-id="${esc(item.id)}">
           ${ribbonHtml}
-          <span>${esc((rec["매물종류"] || "매").slice(0, 1))}</span>
+          ${thumbInner}
           <span class="list-card-heart${rec.__관심매물 ? " active" : ""}" data-id="${esc(item.id)}">${rec.__관심매물 ? "♥" : "♡"}</span>
         </div>
         <div class="list-card-body">
-          <div class="list-card-row1 nls-edit-open" title="${esc(row1Text)}">${esc(row1Text)}</div>
-          <div class="list-card-row2 nls-edit-open" title="${esc(row2Text)}">${esc(row2Text)}</div>
+          <div class="list-card-row1" title="${esc(row1Text)}">${esc(row1Text)}</div>
+          <div class="list-card-row2" title="${esc(row2Text)}">${esc(row2Text)}</div>
           <div class="list-card-row3 nls-mini-editable" data-mini-field="매물소개" title="${esc(row3Text)}">${esc(row3Text)}</div>
           <div class="list-card-row4 nls-edit-open" title="${esc([rec["매물종류"], rec["거래유형"], priceText].filter(Boolean).join(" "))}">
             <span class="list-card-type">${esc(rec["매물종류"] || "")}</span><span class="list-card-deal">${esc(rec["거래유형"] || "")}</span><span class="list-card-price-num">${esc(priceText)}</span>
@@ -1083,6 +1204,25 @@
       // 카드로 자동 이동 - 목록이 길면 강조 표시만으로는 화면 밖이라 안 보일 수 있음.
       const focusedCard = listPanelEl.querySelector(".list-card-focus");
       if (focusedCard) focusedCard.scrollIntoView({ block: "nearest" });
+      // v2.221: [기능 추가] 아직 첨부파일을 한 번도 안 불러온 매물만 조용히 하나씩
+      // 따로 불러와서(전체를 한 번에 다 받지 않음, v2.138 메시지 크기 제한 우회),
+      // 오면 그 카드의 썸네일만 실제 사진으로 다시 그려넣는다.
+      items.forEach((item) => {
+        if (attachmentsById[item.id] !== undefined) return;
+        fetchAttachments(item.id).then((list) => {
+          const isImage = list.find((a) => (a.type || "").startsWith("image/"));
+          if (!isImage) return;
+          const thumbEl = listPanelEl.querySelector(`.list-card-thumb[data-id="${CSS.escape(item.id)}"]`);
+          if (thumbEl && !thumbEl.querySelector(".list-card-thumb-img")) {
+            const placeholder = thumbEl.querySelector("span:not(.list-card-heart)");
+            const img = document.createElement("img");
+            img.src = isImage.dataUrl;
+            img.alt = "";
+            img.className = "list-card-thumb-img";
+            if (placeholder) thumbEl.replaceChild(img, placeholder);
+          }
+        });
+      });
     }
     // v2.176: [기능 추가] "매물소개" 즉석 미니 메모장 - popup.js의 openInlineEditor/
     // saveInlineEditor와 동일한 패턴(별도 문서라 로직만 복제). 저장은 이 페이지가
@@ -1125,6 +1265,218 @@
     }
     document.getElementById("miniEditorSave").addEventListener("click", saveMiniEditor);
     document.getElementById("miniEditorCancel").addEventListener("click", closeMiniEditor);
+
+    // v2.221: [기능 추가] 썸네일 클릭 시 뜨는 "파일/사진 목록" 풍선 - 매물목록창
+    // (popup.js의 attachListPopup)과 같은 구성(추가 버튼+붙여넣기 박스+목록). 이 페이지는
+    // chrome.storage에 직접 접근할 수 없어(외부 페이지) background.js에 새로 추가한
+    // "maemulon-get-attachments"/"maemulon-save-attachments" 메시지로 위임한다
+    // (기존 maemulon-update-field와 동일한 경유 구조). 파일 처리 로직(압축/붙여넣기 등)은
+    // edit.js의 것과 동일 로직 복제(별도 문서라 공유 불가).
+    function formatFileSize(bytes) {
+      if (!bytes) return "";
+      if (bytes < 1024) return bytes + "B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + "KB";
+      return (bytes / 1024 / 1024).toFixed(1) + "MB";
+    }
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    function compressImageFile(file, maxDim, quality) {
+      return new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          canvas.toBlob((blob) => {
+            if (!blob) { resolve(null); return; }
+            const reader = new FileReader();
+            reader.onload = () => resolve({ dataUrl: reader.result, size: blob.size });
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          }, "image/jpeg", quality);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+        img.src = url;
+      });
+    }
+    function sortAttachmentsForSave(list) {
+      const isImage = (a) => (a.type || "").startsWith("image/");
+      const images = list.filter(isImage);
+      const docs = list.filter((a) => !isImage(a));
+      const ext = (name) => { const m = /\.([^.]+)$/.exec(name || ""); return m ? m[1].toLowerCase() : ""; };
+      docs.sort((a, b) => ext(a.name).localeCompare(ext(b.name)));
+      return [...images, ...docs];
+    }
+    async function fetchAttachments(id) {
+      if (attachmentsById[id] !== undefined) return attachmentsById[id];
+      const res = await sendToExtension({ type: "maemulon-get-attachments", id });
+      const list = (res && res.attachments) || [];
+      attachmentsById[id] = list;
+      return list;
+    }
+    async function saveAttachments(id, list) {
+      attachmentsById[id] = list;
+      await sendToExtension({ type: "maemulon-save-attachments", id, attachments: list });
+    }
+    const attachPopupEl = document.getElementById("attachPopup");
+    const attachPopupListEl = document.getElementById("attachPopupList");
+    const attachPopupTitleEl = document.getElementById("attachPopupTitle");
+    const attachPopupFileInputEl = document.getElementById("attachPopupFileInput");
+    let attachPopupTarget = null; // { id, cardEl }
+    let attachWorkPromise = Promise.resolve();
+    function renderAttachPopupList() {
+      const list = attachPopupTarget ? (attachmentsById[attachPopupTarget.id] || []) : [];
+      attachPopupListEl.innerHTML = list.length ? list.map((a) => {
+        const isImage = (a.type || "").startsWith("image/");
+        const thumb = isImage
+          ? `<img src="${a.dataUrl}" alt="${esc(a.name)}" class="attach-thumb" />`
+          : `<span class="attach-file-icon">📄</span>`;
+        return `<div class="attach-item" data-id="${esc(a.id)}">
+          ${thumb}
+          <span class="attach-name" data-id="${esc(a.id)}" title="${esc(a.name)}">${esc(a.name)}</span>
+          <span class="attach-size">${formatFileSize(a.size)}</span>
+          <a class="attach-download" href="${a.dataUrl}" data-id="${esc(a.id)}" target="_blank" rel="noopener noreferrer" title="열기">열기</a>
+          <button type="button" class="attach-remove" data-id="${esc(a.id)}" title="삭제">✕</button>
+        </div>`;
+      }).join("") : `<div class="attach-empty">등록된 파일/사진이 없습니다.</div>`;
+    }
+    function updateCardThumb(id) {
+      const list = attachmentsById[id] || [];
+      const isImage = list.find((a) => (a.type || "").startsWith("image/"));
+      const thumbEl = listPanelEl.querySelector(`.list-card-thumb[data-id="${CSS.escape(id)}"]`);
+      if (!thumbEl) return;
+      const existingImg = thumbEl.querySelector(".list-card-thumb-img");
+      const placeholder = thumbEl.querySelector("span:not(.list-card-heart)");
+      if (isImage) {
+        if (existingImg) { existingImg.src = isImage.dataUrl; return; }
+        if (placeholder) {
+          const img = document.createElement("img");
+          img.src = isImage.dataUrl;
+          img.alt = "";
+          img.className = "list-card-thumb-img";
+          thumbEl.replaceChild(img, placeholder);
+        }
+      } else if (existingImg) {
+        const span = document.createElement("span");
+        const rec = (currentMarkerData.find((d) => d.id === id) || {}).rec || {};
+        span.textContent = (rec["매물종류"] || "매").slice(0, 1);
+        thumbEl.replaceChild(span, existingImg);
+      }
+    }
+    async function openAttachPopup(cardEl, item) {
+      attachPopupTarget = { id: item.id, cardEl };
+      attachPopupTitleEl.textContent = item.rec["제목"] || "(제목 없음)";
+      const rect = cardEl.getBoundingClientRect();
+      attachPopupEl.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 300)) + "px";
+      attachPopupEl.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 360)) + "px";
+      attachPopupEl.style.display = "block";
+      attachPopupListEl.innerHTML = `<div class="attach-empty">불러오는 중...</div>`;
+      await fetchAttachments(item.id);
+      // 팝업을 여는 사이 다른 매물로 바뀌었으면(빠르게 여러 번 클릭) 화면에 반영 안 함.
+      if (!attachPopupTarget || attachPopupTarget.id !== item.id) return;
+      renderAttachPopupList();
+      updateCardThumb(item.id);
+    }
+    function closeAttachPopup() {
+      attachPopupEl.style.display = "none";
+      attachPopupTarget = null;
+    }
+    // v2.214의 교훈: fileList(=input.files)는 "살아있는 참조"라 input.value를 곧바로
+    // 비우면 처리 시점엔 이미 비어있을 수 있음 - 호출 즉시 배열로 복사해둔다.
+    function addAttachFiles(fileList) {
+      const files = Array.from(fileList);
+      attachWorkPromise = attachWorkPromise.then(() => doAddAttachFiles(files));
+      return attachWorkPromise;
+    }
+    async function doAddAttachFiles(files) {
+      if (!attachPopupTarget) return;
+      const id = attachPopupTarget.id;
+      const list = (attachmentsById[id] || []).slice();
+      for (const file of files) {
+        try {
+          const isCompressible = file.type && file.type.startsWith("image/") && file.type !== "image/gif";
+          let dataUrl = null;
+          let type = file.type || "application/octet-stream";
+          let size = file.size || 0;
+          if (isCompressible) {
+            const compressed = await compressImageFile(file, 1600, 0.85);
+            if (compressed) { dataUrl = compressed.dataUrl; type = "image/jpeg"; size = compressed.size; }
+          }
+          if (!dataUrl) dataUrl = await fileToDataUrl(file);
+          list.push({ id: Date.now() + "_" + Math.random().toString(36).slice(2, 8), name: file.name || "파일", type, size, dataUrl });
+        } catch (e) { /* 개별 파일 실패는 건너뜀 */ }
+      }
+      const sorted = sortAttachmentsForSave(list);
+      await saveAttachments(id, sorted);
+      if (attachPopupTarget && attachPopupTarget.id === id) renderAttachPopupList();
+      updateCardThumb(id);
+    }
+    document.getElementById("attachPopupClose").addEventListener("click", closeAttachPopup);
+    document.getElementById("attachPopupAddBtn").addEventListener("click", () => attachPopupFileInputEl.click());
+    attachPopupFileInputEl.addEventListener("change", () => {
+      if (attachPopupFileInputEl.files.length) addAttachFiles(attachPopupFileInputEl.files);
+      attachPopupFileInputEl.value = "";
+    });
+    const attachPopupDropZoneEl = document.getElementById("attachPopupDropZone");
+    attachPopupDropZoneEl.addEventListener("dragover", (e) => { e.preventDefault(); attachPopupDropZoneEl.classList.add("drop-zone-active"); });
+    attachPopupDropZoneEl.addEventListener("dragleave", () => attachPopupDropZoneEl.classList.remove("drop-zone-active"));
+    attachPopupDropZoneEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      attachPopupDropZoneEl.classList.remove("drop-zone-active");
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length) addAttachFiles(files);
+    });
+    document.addEventListener("paste", (e) => {
+      if (!attachPopupTarget || attachPopupEl.style.display === "none") return;
+      const items = (e.clipboardData || {}).items || [];
+      const files = [];
+      for (const item of items) {
+        if (item.kind === "file") { const f = item.getAsFile(); if (f) files.push(f); }
+      }
+      if (files.length) { e.preventDefault(); addAttachFiles(files); }
+    });
+    attachPopupListEl.addEventListener("click", (e) => {
+      const openLink = e.target.closest(".attach-download, .attach-name");
+      if (openLink && attachPopupTarget) {
+        e.preventDefault();
+        const item = (attachmentsById[attachPopupTarget.id] || []).find((a) => a.id === openLink.dataset.id);
+        if (!item) return;
+        // v2.221: [버그 방지] blob: 주소는 그걸 만든 페이지(이 창) 안에서만 유효해서,
+        // background.js(서비스워커)가 새 창을 열 때는 못 알아본다 - 대신 dataUrl
+        // 자체를 넘겨서 background.js가 자기 쪽에서 Blob 주소로 바꾸도록 위임한다
+        // (첨부파일 1개 크기는 v2.138의 전체목록 한도와 무관해 메시지로 보내도 안전).
+        sendToExtension({ type: "maemulon-open-attachment", dataUrl: item.dataUrl });
+        return;
+      }
+      const removeBtn = e.target.closest(".attach-remove");
+      if (removeBtn && attachPopupTarget) {
+        const id = attachPopupTarget.id;
+        const list = (attachmentsById[id] || []).filter((a) => a.id !== removeBtn.dataset.id);
+        saveAttachments(id, list).then(() => {
+          if (attachPopupTarget && attachPopupTarget.id === id) renderAttachPopupList();
+          updateCardThumb(id);
+        });
+      }
+    });
+    document.addEventListener("mousedown", (e) => {
+      if (attachPopupEl.style.display === "none") return;
+      if (attachPopupEl.contains(e.target)) return;
+      if (e.target.closest(".nls-thumb-open")) return;
+      closeAttachPopup();
+    });
+
     listPanelEl.addEventListener("click", (e) => {
       const heart = e.target.closest(".list-card-heart");
       if (heart) {
@@ -1152,8 +1504,18 @@
         if (cardEl) sendToExtension({ type: "maemulon-open-edit", id: cardEl.dataset.id });
         return;
       }
-      // v2.154: [요청 반영] 카드의 나머지 부분(썸네일 등) 클릭 -> 해당 마커로 지도 이동
-      // (정보창 없이). 4줄이 각각 위에서 처리되므로 여기는 주로 썸네일 클릭이 해당.
+      // v2.221: [요청 반영] 썸네일(사진 자리) 클릭 - 매물목록창에 있는 것과 같은
+      // "파일/사진 목록" 풍선을 연다(수정창이 아님).
+      const thumbOpen = e.target.closest(".nls-thumb-open");
+      if (thumbOpen) {
+        const cardEl = thumbOpen.closest(".list-card");
+        const item = currentMarkerData.find((d) => d.id === thumbOpen.dataset.id);
+        if (item) openAttachPopup(cardEl, item);
+        return;
+      }
+      // v2.154: [요청 반영] 카드의 나머지 부분(1·2번째 줄 포함) 클릭 -> 해당 마커로
+      // 지도 이동(정보창 없이). v2.221: 1·2번째 줄(row1/row2)에서 별도 클래스를 없애서
+      // 이 기본 동작(지도 이동)으로 흡수되도록 변경(예전엔 수정창을 열었음).
       const card = e.target.closest(".list-card");
       if (card) {
         const item = currentMarkerData.find((d) => d.id === card.dataset.id);
