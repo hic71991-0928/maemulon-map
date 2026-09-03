@@ -300,9 +300,15 @@
   /* v2.219: [버그 수정] 카드가 서로 맞닿게 되면서, 위 카드의 아래쪽 테두리 + 아래
      카드의 위쪽 테두리가 겹쳐 두 줄(두 배 두께)로 보이던 문제 - 마지막 카드를 뺀
      나머지는 아래쪽 테두리를 없애서, 경계선이 항상 "아래 카드의 위쪽 테두리" 한 줄로만
-     그려지게 함(선택된 카드처럼 테두리가 더 두꺼운 경우에도 그 카드의 위쪽 테두리가
-     자연스럽게 두꺼운 경계선을 만들어줌). */
-  .list-card:not(:last-child) { border-bottom: none; }
+     그려지게 함.
+     v2.220: [버그 수정] 이 규칙이 선택된(강조) 카드에도 그대로 적용되면서, 선택된
+     카드가 목록 맨 마지막이 아닐 때는 자기 아래쪽 테두리가 사라지고 그 대신 바로 아래
+     (선택 안 된, 평범한 회색) 카드의 위쪽 테두리로 경계선이 그려져버려 "선택 박스의
+     아랫변이 없어 보이는" 버그가 있었음 - 선택된 카드(.list-card-focus)는 이 규칙에서
+     제외해서, 위치와 상관없이 항상 자기 테두리 4면을 온전히 유지하도록 함(선택 카드
+     바로 아래에 카드가 더 있으면 그 경계에 얇은 회색 줄이 살짝 겹쳐 보일 수 있지만,
+     선택 박스가 항상 완전하게 보이는 것을 우선). */
+  .list-card:not(:last-child):not(.list-card-focus) { border-bottom: none; }
   /* v2.216: [요청 반영] 카드 사이 여백/둥근 모서리를 없애서 서로 붙는 사각형
      박스로(매물목록 팝업 표의 거래유형별 배경색과 동일한 색을 카드 배경에도 적용). */
   .list-card.list-card-maemae { background: #fff8f1; }
@@ -361,12 +367,14 @@
   .nls-edit-open:hover { background: var(--toss-line); border-radius: 5px; }
   /* 1번째 줄: 매물코드 + 주소(지번 제외) - 옅은 녹색 바탕의 라벨 형태 */
   /* v2.216: [요청 반영] 글자 크기 전부 +1px
-     v2.219: [요청 반영] 여전히 작다는 피드백 - 배지(버튼) 글자만 빼고 전부 +1px 추가 */
+     v2.219: [요청 반영] 여전히 작다는 피드백 - 배지(버튼) 글자만 빼고 전부 +1px 추가
+     v2.220: [요청 반영] 옅은 회색(var(--toss-text-mute))이 잘 안 보인다는 피드백 -
+     청회색(#191F28)으로 변경(매매/전세/월세 배지·거래금액은 이번에도 제외, 그대로 유지) */
   .list-card-row1 {
     display: inline-block;
     align-self: flex-start;
     background: #e2eee5;
-    color: var(--toss-text-mute);
+    color: #191F28;
     font-size: 12.5px;
     padding: 2px 7px;
     border-radius: 5px;
@@ -375,11 +383,12 @@
     text-overflow: ellipsis;
     max-width: 100%;
   }
-  /* 2번째 줄: 제목 + 물건종류 + 면적 - 진한 청색 강조(요청 반영) */
+  /* 2번째 줄: 제목 + 물건종류 + 면적 - 진한 청색 강조(요청 반영)
+     v2.220: [요청 반영] "제목" 글자색을 파랑(#3182F6)으로 변경 */
   .list-card-row2 {
     font-size: 15px;
     font-weight: 700;
-    color: #2b579a;
+    color: #3182F6;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -387,7 +396,7 @@
   /* 3번째 줄: 매물소개 */
   .list-card-row3 {
     font-size: 13px;
-    color: var(--toss-text-mute);
+    color: #191F28;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -395,7 +404,7 @@
   /* 4번째 줄: 매물종류 + 거래유형 + 가격 */
   .list-card-row4 { font-size: 14.5px; margin-top: 1px; }
   .list-card-type {
-    color: var(--toss-text-mute);
+    color: #191F28;
     font-size: 13px;
     margin-right: 4px;
   }
@@ -1030,8 +1039,12 @@
       // 3번째 줄 - 매물소개
       const row3Text = computeIntroMap(rec) || "(매물소개 없음)";
       // 4번째 줄 - 매물종류 + 거래유형 + 가격
+      // v2.220: [버그 수정] 월세 보증금이 항상 빈 값으로 나오던 문제 - "보증금" 항목은
+      // 사용자가 수동 입력하는 별개의 "임차보증금" 필드라 대부분 비어있고, 실제
+      // 네이버에서 자동으로 긁어온 월세 매물의 진짜 보증금은 "전세가" 항목에 함께
+      // 저장되는 구조(content.js 주석 참고, popup.js도 동일하게 취급) - 필드를 바로잡음.
       const priceText = rec["거래유형"] === "월세"
-        ? `${numFmtSimple(rec["보증금"])}/${numFmtSimple(rec["월세"])}`
+        ? `${numFmtSimple(rec["전세가"])}/${numFmtSimple(rec["월세"])}`
         : rec["거래유형"] === "전세"
         ? numFmtSimple(rec["전세가"])
         : numFmtSimple(rec["매매가"]);
