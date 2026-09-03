@@ -568,7 +568,10 @@
     color: var(--toss-text-mute);
     box-sizing: border-box;
   }
-  #attachPopupList { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  /* v2.231: [요청 반영] 항목 사이 여백/둥근 모서리를 없애서 서로 붙는 사각형 박스로
+     (테두리 색/굵기는 그대로). 마지막 항목 빼고 아래쪽 테두리를 없애서 경계선이 한
+     줄로만 그려지게 함(v2.219의 이중선 방지 패턴 재사용). */
+  #attachPopupList { display: flex; flex-direction: column; gap: 0; margin-top: 8px; }
   #attachPopupList .attach-empty { text-align: center; color: var(--toss-text-mute); font-size: 12px; padding: 10px 0; }
   #attachPopupList .attach-item {
     display: flex;
@@ -577,11 +580,24 @@
     padding: 5px 8px;
     background: var(--toss-bg);
     border: 1px solid var(--toss-line-strong, #d1d6db);
-    border-radius: 8px;
     font-size: 12.5px;
   }
+  #attachPopupList .attach-item:not(:last-child) { border-bottom: none; }
   #attachPopupList .attach-thumb { width: 26px; height: 26px; object-fit: cover; border-radius: 5px; flex-shrink: 0; }
-  #attachPopupList .attach-file-icon { width: 26px; text-align: center; flex-shrink: 0; }
+  /* v2.231: [요청 반영] 확장자 배지(pdf/doc/xls 등)로 변경 - 색은 fileExtBadgeHtml에서 인라인 지정 */
+  #attachPopupList .attach-file-icon {
+    width: 26px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    flex-shrink: 0;
+  }
   #attachPopupList .attach-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--toss-text); cursor: pointer; }
   #attachPopupList .attach-download { border: none; background: transparent; color: #8b3fd6; font-weight: 700; text-decoration: none; flex-shrink: 0; cursor: pointer; }
   #attachPopupList .attach-remove {
@@ -910,7 +926,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.230";
+    const KAKAO_MAP_VERSION = "2.231";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1415,13 +1431,32 @@
     // 이 사본을 실제로 저장하고, "취소"(또는 X, 바깥 클릭)를 누르면 이 사본을
     // 그냥 버려서 원래 저장돼 있던 내용이 그대로 유지된다.
     let attachPopupWorkingList = [];
+    // v2.231: [요청 반영] 사진이 아닌 파일이 전부 똑같은 📄 아이콘 하나뿐이라 pdf/워드/
+    // 엑셀 등 무슨 파일인지 구분이 안 된다는 피드백 - 확장자를 작은 색깔 배지로 표시
+    // (popup.js/edit.js와 동일 로직 복제, 별도 문서라 공유 불가).
+    const FILE_EXT_BADGES = {
+      pdf: { label: "PDF", color: "#e03131" },
+      doc: { label: "DOC", color: "#3182f6" },
+      docx: { label: "DOC", color: "#3182f6" },
+      xls: { label: "XLS", color: "#17a34a" },
+      xlsx: { label: "XLS", color: "#17a34a" },
+      ppt: { label: "PPT", color: "#e8590c" },
+      pptx: { label: "PPT", color: "#e8590c" },
+      hwp: { label: "HWP", color: "#8b3fd6" },
+    };
+    function fileExtBadgeHtml(name) {
+      const m = /\.([^.]+)$/.exec(name || "");
+      const ext = m ? m[1].toLowerCase() : "";
+      const info = FILE_EXT_BADGES[ext] || { label: "FILE", color: "#8b95a1" };
+      return `<span class="attach-file-icon" style="background:${info.color}">${esc(info.label)}</span>`;
+    }
     function renderAttachPopupList() {
       const list = attachPopupTarget ? attachPopupWorkingList : [];
       attachPopupListEl.innerHTML = list.length ? list.map((a) => {
         const isImage = (a.type || "").startsWith("image/");
         const thumb = isImage
           ? `<img src="${a.dataUrl}" alt="${esc(a.name)}" class="attach-thumb" />`
-          : `<span class="attach-file-icon">📄</span>`;
+          : fileExtBadgeHtml(a.name);
         // v2.229: [요청 반영] 파일 크기 표시 삭제(불필요) - 파일명(.attach-name)이
         // 자동으로 그 자리를 차지해서 긴 제목도 최대한 보이게.
         return `<div class="attach-item" data-id="${esc(a.id)}">
