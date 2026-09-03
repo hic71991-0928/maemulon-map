@@ -282,12 +282,15 @@
     gap: 10px;
     background: #fff;
     border: 1px solid var(--toss-line);
-    border-radius: 10px;
     padding: 10px;
-    margin-bottom: 8px;
     cursor: pointer;
   }
   .list-card:hover { border-color: var(--toss-blue); }
+  /* v2.216: [요청 반영] 카드 사이 여백/둥근 모서리를 없애서 서로 붙는 사각형
+     박스로(매물목록 팝업 표의 거래유형별 배경색과 동일한 색을 카드 배경에도 적용). */
+  .list-card.list-card-maemae { background: #fff8f1; }
+  .list-card.list-card-jeonse { background: #f2faf6; }
+  .list-card.list-card-wolse { background: #f3effb; }
   /* v2.176: [요청 반영] 사용자가 첨부한 샘플(OK부동산)의 썸네일은 세로로 너무 길어
      비율이 어색했음("엇박자") - 기존 카드의 가로:세로 비율(84:64 ≈ 1.31:1)은 그대로
      유지한 채 크기만 키움(108x82, 같은 비율). 실제 사진은 여전히 못 띄운다(v2.138의
@@ -340,12 +343,13 @@
   .nls-mini-editable:hover { background: var(--toss-blue-bg); border-radius: 5px; }
   .nls-edit-open:hover { background: var(--toss-line); border-radius: 5px; }
   /* 1번째 줄: 매물코드 + 주소(지번 제외) - 옅은 녹색 바탕의 라벨 형태 */
+  /* v2.216: [요청 반영] 글자 크기 전부 +1px */
   .list-card-row1 {
     display: inline-block;
     align-self: flex-start;
     background: #e2eee5;
     color: var(--toss-text-mute);
-    font-size: 10.5px;
+    font-size: 11.5px;
     padding: 2px 7px;
     border-radius: 5px;
     white-space: nowrap;
@@ -355,7 +359,7 @@
   }
   /* 2번째 줄: 제목 + 물건종류 + 면적 - 진한 청색 강조(요청 반영) */
   .list-card-row2 {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: #2b579a;
     white-space: nowrap;
@@ -364,37 +368,42 @@
   }
   /* 3번째 줄: 매물소개 */
   .list-card-row3 {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--toss-text-mute);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   /* 4번째 줄: 매물종류 + 거래유형 + 가격 */
-  .list-card-row4 { font-size: 12.5px; margin-top: 1px; }
+  .list-card-row4 { font-size: 13.5px; margin-top: 1px; }
   .list-card-type {
     color: var(--toss-text-mute);
-    font-size: 11px;
+    font-size: 12px;
     margin-right: 4px;
   }
   .list-card-deal {
     display: inline-block;
     background: var(--toss-red);
     color: #fff;
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 700;
     padding: 1px 5px;
     border-radius: 4px;
     margin-right: 4px;
   }
-  .list-card-price-num { font-weight: 700; color: var(--toss-text); }
+  /* v2.216: [요청 반영] 거래금액 글자색 지정 */
+  .list-card-price-num { font-weight: 700; color: #C00000; }
   /* v2.176: [기능 추가] 매물목록창에서 특정 매물을 지도로 이동했을 때(FOCUS_ID),
      목록 패널의 해당 카드도 같이 강조(요청 반영) - 마커의 빨간 펄스(#mm-focus-marker)
-     와 색을 맞춰 진한 빨간 테두리 + 옅은 빨간 바탕으로 표시. */
-  .list-card.list-card-focus {
-    border: 2px solid #ff0000;
-    background: #fff0f0;
-  }
+     와 색을 맞춰 진한 빨간 테두리로 표시.
+     v2.216: [요청 반영] 이중 박스처럼 보이던 옅은 빨간 배경(#fff0f0) 오버라이드는
+     제거(카드 배경은 이제 거래유형색을 그대로 유지) - 테두리만 두껍게(2px->3px)+
+     그 카드의 거래유형 색 계열 "진한" 버전으로(매매/전세/월세 구분 안 되는 경우만
+     기존 빨간 테두리 유지). */
+  .list-card.list-card-focus { border-width: 3px; border-color: #ff0000; }
+  .list-card.list-card-maemae.list-card-focus { border-color: #e8a487; }
+  .list-card.list-card-jeonse.list-card-focus { border-color: #17a34a; }
+  .list-card.list-card-wolse.list-card-focus { border-color: #8b3fd6; }
   /* v2.176: [기능 추가] "매물소개" 줄 클릭 시 뜨는 즉석 미니 메모장 - popup.js/
      popup.css의 #inlineEditor와 동일한 형태(별도 문서라 스타일만 복제). */
   #miniEditor {
@@ -995,7 +1004,10 @@
         ? numFmtSimple(rec["전세가"])
         : numFmtSimple(rec["매매가"]);
       const isFocused = FOCUS_ID && rec.__매물번호 === FOCUS_ID;
-      return `<div class="list-card${isFocused ? " list-card-focus" : ""}" data-id="${esc(item.id)}">
+      // v2.216: [요청 반영] 매물목록 팝업 표(popup.css의 deal-row-*)와 동일하게
+      // 거래유형별 카드 배경색을 적용하기 위한 클래스.
+      const dealCardClass = DEAL_CARD_CLASS[rec["거래유형"]] || "";
+      return `<div class="list-card${dealCardClass ? " " + dealCardClass : ""}${isFocused ? " list-card-focus" : ""}" data-id="${esc(item.id)}">
         <div class="list-card-thumb">
           ${ribbonHtml}
           <span>${esc((rec["매물종류"] || "매").slice(0, 1))}</span>
@@ -1535,6 +1547,9 @@
       "경매공매": "경공매", "보류매물": "보류", "계약된매물": "계약", "교환가능": "교환", "전속매물": "전속",
     };
     const DEAL_TYPE_ITEMS = ["매매", "전세", "월세", "단기임대"];
+    // v2.216: [요청 반영] 매물목록 카드 배경색 - popup.css의 DEAL_ROW_CLASS와
+    // 동일한 매핑(별개 문서라 복제).
+    const DEAL_CARD_CLASS = { "매매": "list-card-maemae", "전세": "list-card-jeonse", "월세": "list-card-wolse" };
     const SIDO_SHORT_NAME = {
       "서울특별시": "서울", "경기도": "경기", "인천광역시": "인천", "부산광역시": "부산",
       "대전광역시": "대전", "대구광역시": "대구", "울산광역시": "울산", "세종특별자치시": "세종",
