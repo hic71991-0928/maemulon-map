@@ -848,7 +848,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.222";
+    const KAKAO_MAP_VERSION = "2.225";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1453,15 +1453,31 @@
         e.preventDefault();
         const item = (attachmentsById[attachPopupTarget.id] || []).find((a) => a.id === openLink.dataset.id);
         if (!item) return;
-        // v2.221: [버그 방지] blob: 주소는 그걸 만든 페이지(이 창) 안에서만 유효해서,
-        // background.js(서비스워커)가 새 창을 열 때는 못 알아본다 - 대신 dataUrl
-        // 자체를 넘겨서 background.js가 자기 쪽에서 Blob 주소로 바꾸도록 위임한다
-        // (첨부파일 1개 크기는 v2.138의 전체목록 한도와 무관해 메시지로 보내도 안전).
-        // v2.222: [버그 수정] 이미지는 새 창에 바로 보여줄 수 있지만, 문서(docx 등)는
-        // 브라우저가 창 안에 보여줄 방법이 없어 조용히 실패했음 - 파일 이름도 같이
-        // 넘겨서 background.js가 이미지/문서를 구분해 처리하게 함(파일명은 downloads
-        // 저장 대화상자에 그대로 씀).
-        sendToExtension({ type: "maemulon-open-attachment", dataUrl: item.dataUrl, name: item.name });
+        // v2.221~v2.224: background.js(서비스워커)를 거쳐 열려고 여러 방식(Blob 새창/
+        // 다운로드+자동열기)을 시도했지만, 이미지가 한 번에 안 열리는 문제가 계속됨.
+        // v2.225: [버그 수정] 매물목록창(popup.js)이 애초에 한 번에 잘 되는 이유는
+        // "Blob 변환"과 "새 창 열기"를 전부 자기 자신(같은 페이지) 안에서 처리하기
+        // 때문 - 서로 다른 컨텍스트(이 창 ↔ 서비스워커)를 오가면서 문제가 생겼던
+        // 것이므로, 이미지는 이 창 스스로 Blob으로 바꿔 스스로 새 탭으로 여는 방식으로
+        // 바꿈(background.js 경유 없음 - popup.js/edit.js와 동일한 원리).
+        // 문서(docx 등)는 브라우저가 창에 못 띄우므로 계속 다운로드로 위임.
+        const isImage = (item.type || "").startsWith("image/");
+        if (isImage) {
+          (async () => {
+            try {
+              const blob = await (await fetch(item.dataUrl)).blob();
+              const blobUrl = URL.createObjectURL(blob);
+              const screenW = window.screen.availWidth || 1600;
+              const screenH = window.screen.availHeight || 900;
+              const w = Math.round(screenW * 0.65);
+              const h = Math.round(screenH * 0.65);
+              window.open(blobUrl, "_blank", `popup=yes,width=${w},height=${h},left=${Math.round((screenW - w) / 2)},top=${Math.round((screenH - h) / 2)}`);
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+            } catch (err) { /* 실패해도 풍선 자체는 계속 쓸 수 있어야 함 */ }
+          })();
+        } else {
+          sendToExtension({ type: "maemulon-open-attachment", dataUrl: item.dataUrl, name: item.name });
+        }
         return;
       }
       const removeBtn = e.target.closest(".attach-remove");
