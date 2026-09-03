@@ -848,7 +848,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.225";
+    const KAKAO_MAP_VERSION = "2.226";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1461,8 +1461,10 @@
         // 것이므로, 이미지는 이 창 스스로 Blob으로 바꿔 스스로 새 탭으로 여는 방식으로
         // 바꿈(background.js 경유 없음 - popup.js/edit.js와 동일한 원리).
         // 문서(docx 등)는 브라우저가 창에 못 띄우므로 계속 다운로드로 위임.
-        const isImage = (item.type || "").startsWith("image/");
-        if (isImage) {
+        // v2.226: [요청 반영] PDF도 크롬이 자체적으로 화면에 바로 보여줄 수 있어서
+        // 이미지와 동일하게 취급(popup.js/edit.js와 동일한 기준으로 통일).
+        const isPreviewable = (item.type || "").startsWith("image/") || item.type === "application/pdf";
+        if (isPreviewable) {
           (async () => {
             try {
               const blob = await (await fetch(item.dataUrl)).blob();
