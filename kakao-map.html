@@ -561,6 +561,21 @@
     cursor: pointer;
   }
   #attachPopupList .attach-remove:hover { background: var(--toss-red-bg); color: var(--toss-red); }
+  /* v2.227: [요청 반영] 저장/취소 버튼 - 매물목록창(popup.css의 .attach-popup-footer)과 동일 톤 */
+  .attach-popup-footer { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+  .attach-popup-footer button {
+    border: none;
+    background: var(--toss-line);
+    color: var(--toss-text-sub);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .attach-popup-footer button:hover { background: var(--toss-line-strong, #d1d6db); }
+  .attach-popup-footer button.primary { background: var(--toss-blue); color: #fff; }
+  .attach-popup-footer button.primary:hover { background: var(--toss-blue-dark); }
   .list-card-thumb-img { width: 100%; height: 100%; object-fit: cover; }
   #roadviewSplit {
     display: none;
@@ -825,6 +840,12 @@
         <input type="text" class="paste-target-input" placeholder="박스안에 사진을 붙여넣기(Ctrl+V)해도 추가됩니다" readonly />
       </div>
       <div id="attachPopupList"></div>
+      <!-- v2.227: [요청 반영] 매물목록창(popup.js)과 동일하게 "저장 눌러야 진짜 저장,
+           취소하면 되돌리기" 방식으로 - 추가/삭제한 결과는 저장을 눌러야 실제 반영된다. -->
+      <div class="attach-popup-footer">
+        <button type="button" id="attachPopupSaveBtn" class="primary">저장</button>
+        <button type="button" id="attachPopupCancelBtn">취소</button>
+      </div>
     </div>
   </div>
   <!-- v2.143: [기능 추가] ①지역선택 필터에 필요한 전국 법정동 DB. popup.html이 쓰는
@@ -848,7 +869,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.226";
+    const KAKAO_MAP_VERSION = "2.227";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1079,7 +1100,19 @@
 
       // v2.154: [기능 추가] ③ 매물목록 카드 - 지도에 실제로 찍힌(주소 변환 성공한) 매물만
       // 카드로도 보여준다(카드 클릭 -> 지도 이동이 항상 가능하도록).
-      renderListPanel(currentMarkerData);
+      // v2.227: [요청 반영] 처음 그릴 때도 "현재 화면에 보이는 것만"으로 바로 맞춰서
+      // 시작(지도를 옮기지 않아도 일관된 기준으로 보이게).
+      updateListPanelByBounds();
+    }
+    // v2.227: [기능 추가] 지금 지도에 실제로 보이는(화면 범위 안의) 매물만 걸러서
+    // 목록 패널에 보여준다 - 새로 서버에 요청하지 않고 이미 불러온 currentMarkerData
+    // 안에서 좌표 기준으로만 거른다(가벼움). 지도가 아직 없거나 매물이 하나도 없으면
+    // 그냥 있는 그대로 보여준다.
+    function updateListPanelByBounds() {
+      if (!mapInstance || !currentMarkerData.length) { renderListPanel(currentMarkerData); return; }
+      const bounds = mapInstance.getBounds();
+      const visible = currentMarkerData.filter((item) => bounds.contain(item.pos));
+      renderListPanel(visible);
     }
 
     // ===================== v2.154: ③ 매물목록 카드 패널 =====================
@@ -1261,7 +1294,8 @@
         if (field === "매물소개") item.rec.__매물소개Manual = true;
       }
       closeMiniEditor();
-      renderListPanel(currentMarkerData);
+      // v2.227: [요청 반영] 목록 갱신도 항상 "현재 화면 범위" 기준으로 다시 계산.
+      updateListPanelByBounds();
     }
     document.getElementById("miniEditorSave").addEventListener("click", saveMiniEditor);
     document.getElementById("miniEditorCancel").addEventListener("click", closeMiniEditor);
@@ -1336,8 +1370,14 @@
     const attachPopupFileInputEl = document.getElementById("attachPopupFileInput");
     let attachPopupTarget = null; // { id, cardEl }
     let attachWorkPromise = Promise.resolve();
+    // v2.227: [요청 반영] 매물목록창(popup.js)과 동일하게 "저장 눌러야 진짜 저장"
+    // 방식으로 - 풍선을 여는 순간의 첨부파일을 이 작업용 사본에 복사해두고, 추가/
+    // 삭제는 전부 이 사본만 건드린다(chrome.storage에는 안 씀). "저장"을 눌러야
+    // 이 사본을 실제로 저장하고, "취소"(또는 X, 바깥 클릭)를 누르면 이 사본을
+    // 그냥 버려서 원래 저장돼 있던 내용이 그대로 유지된다.
+    let attachPopupWorkingList = [];
     function renderAttachPopupList() {
-      const list = attachPopupTarget ? (attachmentsById[attachPopupTarget.id] || []) : [];
+      const list = attachPopupTarget ? attachPopupWorkingList : [];
       attachPopupListEl.innerHTML = list.length ? list.map((a) => {
         const isImage = (a.type || "").startsWith("image/");
         const thumb = isImage
@@ -1383,15 +1423,24 @@
       attachPopupEl.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 360)) + "px";
       attachPopupEl.style.display = "block";
       attachPopupListEl.innerHTML = `<div class="attach-empty">불러오는 중...</div>`;
-      await fetchAttachments(item.id);
+      const list = await fetchAttachments(item.id);
       // 팝업을 여는 사이 다른 매물로 바뀌었으면(빠르게 여러 번 클릭) 화면에 반영 안 함.
       if (!attachPopupTarget || attachPopupTarget.id !== item.id) return;
+      attachPopupWorkingList = list.slice(); // 작업용 사본(저장 전까지는 이것만 건드림)
       renderAttachPopupList();
-      updateCardThumb(item.id);
     }
+    // v2.227: [요청 반영] "취소"와 동일한 동작 - 저장 안 하고 작업용 사본을 그냥 버림.
     function closeAttachPopup() {
       attachPopupEl.style.display = "none";
       attachPopupTarget = null;
+      attachPopupWorkingList = [];
+    }
+    async function saveAttachPopup() {
+      if (!attachPopupTarget) return;
+      const id = attachPopupTarget.id;
+      await saveAttachments(id, attachPopupWorkingList);
+      updateCardThumb(id);
+      closeAttachPopup();
     }
     // v2.214의 교훈: fileList(=input.files)는 "살아있는 참조"라 input.value를 곧바로
     // 비우면 처리 시점엔 이미 비어있을 수 있음 - 호출 즉시 배열로 복사해둔다.
@@ -1403,7 +1452,7 @@
     async function doAddAttachFiles(files) {
       if (!attachPopupTarget) return;
       const id = attachPopupTarget.id;
-      const list = (attachmentsById[id] || []).slice();
+      const list = attachPopupWorkingList.slice();
       for (const file of files) {
         try {
           const isCompressible = file.type && file.type.startsWith("image/") && file.type !== "image/gif";
@@ -1418,10 +1467,12 @@
           list.push({ id: Date.now() + "_" + Math.random().toString(36).slice(2, 8), name: file.name || "파일", type, size, dataUrl });
         } catch (e) { /* 개별 파일 실패는 건너뜀 */ }
       }
-      const sorted = sortAttachmentsForSave(list);
-      await saveAttachments(id, sorted);
-      if (attachPopupTarget && attachPopupTarget.id === id) renderAttachPopupList();
-      updateCardThumb(id);
+      // v2.227: [요청 반영] 여기서 바로 저장(saveAttachments)하지 않음 - "저장" 버튼을
+      // 눌러야 실제로 저장되도록 작업용 사본만 갱신.
+      if (attachPopupTarget && attachPopupTarget.id === id) {
+        attachPopupWorkingList = sortAttachmentsForSave(list);
+        renderAttachPopupList();
+      }
     }
     document.getElementById("attachPopupClose").addEventListener("click", closeAttachPopup);
     document.getElementById("attachPopupAddBtn").addEventListener("click", () => attachPopupFileInputEl.click());
@@ -1451,7 +1502,7 @@
       const openLink = e.target.closest(".attach-download, .attach-name");
       if (openLink && attachPopupTarget) {
         e.preventDefault();
-        const item = (attachmentsById[attachPopupTarget.id] || []).find((a) => a.id === openLink.dataset.id);
+        const item = attachPopupWorkingList.find((a) => a.id === openLink.dataset.id);
         if (!item) return;
         // v2.221~v2.224: background.js(서비스워커)를 거쳐 열려고 여러 방식(Blob 새창/
         // 다운로드+자동열기)을 시도했지만, 이미지가 한 번에 안 열리는 문제가 계속됨.
@@ -1482,16 +1533,16 @@
         }
         return;
       }
+      // v2.227: [요청 반영] 삭제도 즉시 저장하지 않고 작업용 사본에서만 뺀다 - "저장"을
+      // 눌러야 실제로 반영됨(그전까지는 "취소"로 되돌릴 수 있음).
       const removeBtn = e.target.closest(".attach-remove");
       if (removeBtn && attachPopupTarget) {
-        const id = attachPopupTarget.id;
-        const list = (attachmentsById[id] || []).filter((a) => a.id !== removeBtn.dataset.id);
-        saveAttachments(id, list).then(() => {
-          if (attachPopupTarget && attachPopupTarget.id === id) renderAttachPopupList();
-          updateCardThumb(id);
-        });
+        attachPopupWorkingList = attachPopupWorkingList.filter((a) => a.id !== removeBtn.dataset.id);
+        renderAttachPopupList();
       }
     });
+    document.getElementById("attachPopupSaveBtn").addEventListener("click", saveAttachPopup);
+    document.getElementById("attachPopupCancelBtn").addEventListener("click", closeAttachPopup);
     document.addEventListener("mousedown", (e) => {
       if (attachPopupEl.style.display === "none") return;
       if (attachPopupEl.contains(e.target)) return;
@@ -2318,6 +2369,11 @@
         );
         // v2.101: 기본값을 지적편집도(지번지도)로 고정해서 켜둠(체크박스도 기본 체크)
         mapInstance.addOverlayMapTypeId(kakao.maps.MapTypeId.USE_DISTRICT);
+        // v2.227: [기능 추가] 네이버부동산처럼 지도를 움직이면(드래그/확대축소) 그
+        // 화면 안에 실제로 보이는 매물만 골라서 오른쪽 목록에 다시 보여준다("idle"은
+        // 카카오맵 SDK가 이동/확대 동작이 끝나고 화면이 안정된 시점에 한 번만 쏘는
+        // 이벤트라 매 프레임마다 계산하지 않아도 됨).
+        kakao.maps.event.addListener(mapInstance, "idle", updateListPanelByBounds);
         wireLayerControl();
         wireLocateButton();
         wireHomeButton();
