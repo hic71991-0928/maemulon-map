@@ -158,10 +158,25 @@
     flex-shrink: 0;
   }
   .help-icon-btn img { width: 22px; height: 22px; }
+  /* v2.233(폴더판 v2.280 이식): [사장님 지적] 도움말을 읽고 난 뒤 닫을 방법이 없었다 → [닫기] 단추 */
+  #helpCloseRow {
+    display: flex; justify-content: flex-end;
+    margin-top: 10px; padding-top: 8px;
+    border-top: 1px solid var(--toss-line);
+  }
+  #helpCloseBtn {
+    padding: 5px 14px;
+    border: 1px solid var(--toss-line-strong);
+    border-radius: 7px;
+    background: #E5E8EB;
+    color: var(--toss-text);
+    font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  #helpCloseBtn:hover { background: #d6dade; }
   #helpTooltip {
     position: fixed;
     z-index: 4000;
-    max-width: 260px;
+    max-width: 520px;   /* v2.233(폴더판 v2.278 이식): 가로를 2배로(260 → 520) */
     background: #fff;
     border: 1px solid var(--toss-line-strong);
     border-radius: 10px;
@@ -804,6 +819,7 @@
   </div>
   <div id="helpTooltip" style="display:none">
     <div id="helpTooltipText"></div>
+    <div id="helpCloseRow"><button type="button" id="helpCloseBtn">닫기</button></div>
   </div>
   <!-- v2.132/v2.142 popup.html 이식: ①지역 선택 팝업 -->
   <div id="regionFilterPopup" class="filter-popup" style="display:none">
@@ -926,7 +942,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.232";
+    const KAKAO_MAP_VERSION = "2.233";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -2441,7 +2457,9 @@
       const isOpen = helpTooltipEl2.style.display !== "none";
       if (isOpen) { helpTooltipEl2.style.display = "none"; return; }
       const rect = btnHelpEl2.getBoundingClientRect();
-      helpTooltipEl2.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 280)) + "px";
+      const tipW2 = Math.min(520, window.innerWidth - 16);   // v2.233(폴더판 v2.278 이식)
+      helpTooltipEl2.style.maxWidth = tipW2 + "px";
+      helpTooltipEl2.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - tipW2 - 8)) + "px";
       helpTooltipEl2.style.top = Math.round(rect.bottom + 6) + "px";
       helpTooltipEl2.style.display = "block";
     });
@@ -2450,6 +2468,14 @@
       if (helpTooltipEl2.contains(e.target) || e.target.closest("#btnHelp")) return;
       helpTooltipEl2.style.display = "none";
     });
+    // v2.233(폴더판 v2.280 이식): [닫기] 단추
+    const helpCloseBtn2 = document.getElementById("helpCloseBtn");
+    if (helpCloseBtn2) {
+      helpCloseBtn2.addEventListener("click", (e) => {
+        e.stopPropagation();
+        helpTooltipEl2.style.display = "none";
+      });
+    }
 
     async function main() {
       try {
