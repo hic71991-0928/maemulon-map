@@ -1016,7 +1016,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.241";
+    const KAKAO_MAP_VERSION = "2.242";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1854,10 +1854,22 @@
         // v2.226: [요청 반영] PDF도 크롬이 자체적으로 화면에 바로 보여줄 수 있어서
         // 이미지와 동일하게 취급(popup.js/edit.js와 동일한 기준으로 통일).
         const isPreviewable = (item.type || "").startsWith("image/") || item.type === "application/pdf";
+        // v2.242: [사장님 PC 오류 기록] v2.251부터 지도창 목록에는 원본(dataUrl)이 없다.
+        // 원본이 없으면 매물on에게 받아 온 뒤 연다(이 컴퓨터에 있으면 바로, 없으면 창고에서).
+        const maemulNo = attachPopupTarget.id;
+        const getDataUrl = async () => {
+          if (item.dataUrl) return item.dataUrl;
+          const res = await sendToExtension({ type: "maemulon-get-original", id: item.id, maemulNo });
+          if (res && res.ok && res.dataUrl) return res.dataUrl;
+          alert((item.name || "첨부파일") + String.fromCharCode(10, 10) + ((res && res.reason) || "파일을 열 수 없습니다."));
+          return null;
+        };
         if (isPreviewable) {
           (async () => {
             try {
-              const blob = await (await fetch(item.dataUrl)).blob();
+              const dataUrl = await getDataUrl();
+              if (!dataUrl) return;
+              const blob = await (await fetch(dataUrl)).blob();
               const blobUrl = URL.createObjectURL(blob);
               const screenW = window.screen.availWidth || 1600;
               const screenH = window.screen.availHeight || 900;
@@ -1868,7 +1880,10 @@
             } catch (err) { /* 실패해도 풍선 자체는 계속 쓸 수 있어야 함 */ }
           })();
         } else {
-          sendToExtension({ type: "maemulon-open-attachment", dataUrl: item.dataUrl, name: item.name });
+          (async () => {
+            const dataUrl = await getDataUrl();
+            if (dataUrl) sendToExtension({ type: "maemulon-open-attachment", dataUrl, name: item.name });
+          })();
         }
         return;
       }
