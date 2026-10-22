@@ -51,6 +51,33 @@
     border-radius: 10px;
   }
   #status.error { color: #f04452; }
+  /* v2.234: [사장님 요청 42번] 목록의 작은 "매물on 지도" 아이콘으로 열면 같은 구 매물만
+     보여서 "왜 43건뿐이지?" 하고 헷갈렸다 → 지금 무엇만 보는지 크게 알려주고 [전체 보기] 단추. */
+  #scopeNotice {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    padding: 4px 6px 4px 12px;
+    background: #FFF4CC;
+    border: 2px solid #F5B800;
+    border-radius: 8px;
+    color: #C40000;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  #scopeNotice.show { display: inline-flex; }
+  #btnScopeAll {
+    font-size: 15px;
+    font-weight: 700;
+    padding: 6px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #3182f6;
+    color: #fff;
+    cursor: pointer;
+  }
+  #btnScopeAll:hover { background: #1b64da; }
 
   /* v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
      초기화/㎡)와 목록·지도 전환 버튼을 지도창에도 동일하게 구현. 이 페이지는 외부
@@ -790,6 +817,7 @@
     <strong>매물on 지도</strong>
     <span id="buildTag"></span>
     <span id="status">확장 프로그램에서 매물 데이터를 기다리는 중...</span>
+    <span id="scopeNotice"><span id="scopeNoticeText"></span><button type="button" id="btnScopeAll" title="같은 구만 보던 것을 풀고 모든 매물을 지도에 보여줍니다">전체 보기</button></span>
   </div>
   <!-- v2.143: [기능 추가] 목록창(popup.html)의 필터바(지역/거래유형·매물종류/검색/
        초기화/㎡)와 목록·지도 전환 버튼(정렬은 자리만)을 지도창에도 동일하게 구현.
@@ -942,7 +970,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.233";
+    const KAKAO_MAP_VERSION = "2.234";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1089,7 +1117,8 @@
     // currentMarkerData에서 찾으면 그 좌표를, 못 찾으면(아직 렌더링 전이거나 필터에
     // 걸러진 경우) URL로 넘어온 원본 좌표를 그대로 쓴다. 클릭하면 수정창이 열린다
     // (기존 마커 클릭과 동일한 동작 - maemulon-open-edit).
-    async function applyFocusMarker() {
+    // v2.234: scopeToGu=false면 같은 구로 좁히지 않고 빨간 표시만 다시 얹는다([전체 보기] 뒤).
+    async function applyFocusMarker(scopeToGu = true) {
       if (focusOverlay) { focusOverlay.setMap(null); focusOverlay = null; }
       if (!FOCUS_ID && !(Number.isFinite(FOCUS_LAT) && Number.isFinite(FOCUS_LNG))) return;
       let target = currentMarkerData.find((d) => d.id === FOCUS_ID);
@@ -1100,10 +1129,11 @@
       // 구/시/군 단위로만 좁혀서 보여주므로, 매물이 수천 건이 돼도 이 화면
       // 자체는 가볍게 유지된다.
       const sigungu = target && target.rec && target.rec["시·군·구"];
-      if (sigungu) {
+      if (sigungu && scopeToGu) {
         const scoped = allListings.filter((r) => r["시·군·구"] === sigungu);
         await renderListings(scoped, false);
         target = currentMarkerData.find((d) => d.id === FOCUS_ID);
+        showScopeNotice(sigungu, currentMarkerData.length, allListings.length);
       }
       const lat = target ? target.pos.getLat() : FOCUS_LAT;
       const lng = target ? target.pos.getLng() : FOCUS_LNG;
@@ -1120,6 +1150,20 @@
       focusOverlay = new kakao.maps.CustomOverlay({ position: pos, content: el, yAnchor: 0.5, xAnchor: 0.5, zIndex: 999 });
       focusOverlay.setMap(mapInstance);
     }
+
+    // v2.234: [42번] "○○구 매물만 보는 중 (전체 N건 중 M건 표시) [전체 보기]" 안내.
+    const scopeNoticeEl = document.getElementById("scopeNotice");
+    function showScopeNotice(sigungu, shown, total) {
+      document.getElementById("scopeNoticeText").textContent =
+        `📍 ${sigungu} 매물만 보는 중 (전체 ${total}건 중 ${shown}건 표시)`;
+      scopeNoticeEl.classList.add("show");
+    }
+    function hideScopeNotice() { scopeNoticeEl.classList.remove("show"); }
+    document.getElementById("btnScopeAll").addEventListener("click", async () => {
+      hideScopeNotice();
+      await refreshMapFilterView(false);   // 지금 보던 위치는 그대로, 매물은 전체(필터 조건만 적용)
+      await applyFocusMarker(false);       // 빨간 표시는 그대로 남김
+    });
 
     // v2.143: [기능 추가] resetView=false면 지도의 현재 중심/확대 상태를 그대로 두고
     // 마커만 다시 그린다(필터를 바꿀 때마다 매번 압구정역으로 화면이 튀면 불편하므로).
@@ -2188,6 +2232,7 @@
     // v2.143: 필터를 바꿀 때마다 압구정역(기본 위치)으로 화면이 튀면 불편하므로,
     // 필터 조작으로 인한 재렌더링은 항상 resetView=false(현재 보던 위치/확대 유지).
     function refreshMapFilterView(resetView) {
+      hideScopeNotice();   // v2.234: 필터·검색을 바꾸면 "같은 구만"이 풀리므로 안내도 끈다
       // v2.163: main()이 초기 렌더링 완료 후에 applyFocusMarker()를 실행할 수 있도록
       // renderListings의 Promise를 그대로 반환한다(기존 호출부들은 반환값을 안 써도 무방).
       return renderListings(computeFilteredListings(), !!resetView);
