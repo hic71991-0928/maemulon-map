@@ -616,7 +616,9 @@
     padding: 10px;
     display: none;
   }
-  #attachPopupHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  #attachPopupHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; cursor: move; user-select: none; background: #f2f4f6; border-radius: 8px; padding: 4px 6px; }
+  /* v2.240: [사장님 요청] 사진 목록을 연 매물 카드 표시 */
+  .list-card.attach-open { outline: 3px solid #3182f6; outline-offset: -3px; background: #fff3bf !important; }
   #attachPopupTitle { font-size: 13.5px; font-weight: 700; color: var(--toss-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #attachPopupClose { border: none; background: transparent; color: var(--toss-text-mute); font-size: 14px; cursor: pointer; flex: none; }
   #attachPopup .attach-controls { display: flex; align-items: center; }
@@ -1010,7 +1012,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.239";
+    const KAKAO_MAP_VERSION = "2.240";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1715,12 +1717,43 @@
         thumbEl.replaceChild(span, existingImg);
       }
     }
+    // v2.240: [사장님 요청] 사진 목록 창을 머리줄(제목 줄)을 잡고 끌어 옮길 수 있게
+    (function () {
+      const head = document.getElementById("attachPopupHeader");
+      if (!head) return;
+      let drag = null;
+      head.addEventListener("mousedown", (e) => {
+        if (e.button !== 0 || e.target.closest("button")) return;
+        const r = attachPopupEl.getBoundingClientRect();
+        drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+        e.preventDefault();
+      });
+      document.addEventListener("mousemove", (e) => {
+        if (!drag) return;
+        attachPopupEl.style.left = Math.max(0, Math.min(e.clientX - drag.dx, window.innerWidth - 80)) + "px";
+        attachPopupEl.style.top = Math.max(0, Math.min(e.clientY - drag.dy, window.innerHeight - 40)) + "px";
+      });
+      document.addEventListener("mouseup", () => { drag = null; });
+    })();
+    function markAttachCard(cardEl) {
+      document.querySelectorAll(".list-card.attach-open").forEach((c) => c.classList.remove("attach-open"));
+      if (cardEl) cardEl.classList.add("attach-open");
+    }
     async function openAttachPopup(cardEl, item) {
       attachPopupTarget = { id: item.id, cardEl };
       attachPopupTitleEl.textContent = item.rec["제목"] || "(제목 없음)";
+      // v2.240: [사장님 요청] 카드를 덮지 않게 **카드 오른쪽 옆**에 띄운다(자리가 없으면 왼쪽).
+      // 아래 공간이 모자라면 창을 위로 올린다. 어느 매물인지 카드에 파란 테두리로 표시한다.
       const rect = cardEl.getBoundingClientRect();
-      attachPopupEl.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - 330)) + "px";
-      attachPopupEl.style.top = Math.max(4, Math.min(rect.top, window.innerHeight - 360)) + "px";
+      const PW = 332, PH = 360;
+      let left = rect.right + 8;
+      if (left + PW > window.innerWidth - 4) left = rect.left - PW - 8;
+      if (left < 4) left = Math.max(4, Math.min(rect.left, window.innerWidth - PW - 4));
+      let top = rect.top;
+      if (top + PH > window.innerHeight - 4) top = Math.max(4, Math.min(rect.bottom, window.innerHeight - 4) - PH);
+      attachPopupEl.style.left = Math.round(left) + "px";
+      attachPopupEl.style.top = Math.round(Math.max(4, top)) + "px";
+      markAttachCard(cardEl);
       attachPopupEl.style.display = "block";
       attachPopupListEl.innerHTML = `<div class="attach-empty">불러오는 중...</div>`;
       const list = await fetchAttachments(item.id);
@@ -1732,6 +1765,7 @@
     // v2.227: [요청 반영] "취소"와 동일한 동작 - 저장 안 하고 작업용 사본을 그냥 버림.
     function closeAttachPopup() {
       attachPopupEl.style.display = "none";
+      markAttachCard(null);   // v2.240
       attachPopupTarget = null;
       attachPopupWorkingList = [];
     }
