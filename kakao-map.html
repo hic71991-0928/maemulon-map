@@ -970,7 +970,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.234";
+    const KAKAO_MAP_VERSION = "2.235";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1144,7 +1144,9 @@
       const el = document.createElement("div");
       el.className = "mm-focus-marker";
       el.title = "선택한 매물 위치 (클릭하면 수정창이 열립니다)";
+      el.addEventListener("mousedown", () => { ignoreMapClickUntil = Date.now() + 800; });   // v2.235
       el.addEventListener("click", () => {
+        ignoreMapClickUntil = Date.now() + 800;
         sendToExtension({ type: "maemulon-open-edit", id: FOCUS_ID || (target && target.id) });
       });
       focusOverlay = new kakao.maps.CustomOverlay({ position: pos, content: el, yAnchor: 0.5, xAnchor: 0.5, zIndex: 999 });
@@ -1155,14 +1157,38 @@
     const scopeNoticeEl = document.getElementById("scopeNotice");
     function showScopeNotice(sigungu, shown, total) {
       document.getElementById("scopeNoticeText").textContent =
-        `📍 ${sigungu} 매물만 보는 중 (전체 ${total}건 중 ${shown}건 표시)`;
+        `📍 ${sigungu} 매물만 보는 중 (전체 ${total}건 중 ${shown}건) · 지도를 움직이면 전체가 보입니다`;
       scopeNoticeEl.classList.add("show");
+      // v2.235: 프로그램이 지도를 그 매물로 옮기는 동작이 다 끝난 뒤부터만 사람의 동작을 받는다
+      scopeActive = true;
+      scopeArmed = false;
+      setTimeout(() => { scopeArmed = true; }, 800);
     }
-    function hideScopeNotice() { scopeNoticeEl.classList.remove("show"); }
-    document.getElementById("btnScopeAll").addEventListener("click", async () => {
-      hideScopeNotice();
-      await refreshMapFilterView(false);   // 지금 보던 위치는 그대로, 매물은 전체(필터 조건만 적용)
-      await applyFocusMarker(false);       // 빨간 표시는 그대로 남김
+    function hideScopeNotice() { scopeNoticeEl.classList.remove("show"); scopeActive = false; }
+    // v2.235: [사장님 요청] [전체 보기]를 몰라도 되게 - 지도를 끌어 옮기거나, 확대·축소하거나,
+    // 지도 아무 곳이나 한 번 누르면 자동으로 전체 보기가 된다(보던 위치·빨간 표시는 그대로).
+    // 매물 표시(파란 물방울·빨간 표시)를 누른 것은 수정창을 열려는 것이라 제외한다.
+    let scopeActive = false;
+    let scopeArmed = false;
+    let ignoreMapClickUntil = 0;
+    let expanding = false;
+    async function expandScopeToAll() {
+      if (!scopeActive || expanding) return;
+      expanding = true;
+      try {
+        hideScopeNotice();
+        await refreshMapFilterView(false);   // 지금 보던 위치는 그대로, 매물은 전체(필터 조건만 적용)
+        await applyFocusMarker(false);       // 빨간 표시는 그대로 남김
+      } finally { expanding = false; }
+    }
+    function onUserMapAction(kind) {
+      if (!scopeActive || !scopeArmed) return;
+      if (kind === "click" && Date.now() < ignoreMapClickUntil) return;
+      expandScopeToAll();
+    }
+    document.getElementById("btnScopeAll").addEventListener("click", () => {
+      scopeArmed = true;
+      expandScopeToAll();
     });
 
     // v2.143: [기능 추가] resetView=false면 지도의 현재 중심/확대 상태를 그대로 두고
@@ -1197,6 +1223,7 @@
         // v2.154: [요청 반영] 마커(물방울 모양) 클릭 시 정보창 대신 곧바로 수정창을 연다
         // (예전엔 정보창을 먼저 열고 그 안의 "수정창 열기" 버튼을 한 번 더 눌러야 했음).
         kakao.maps.event.addListener(marker, "click", () => {
+          ignoreMapClickUntil = Date.now() + 500;   // v2.235: 매물 표시 누름은 "지도 누름"으로 치지 않음
           sendToExtension({ type: "maemulon-open-edit", id: rec.__매물번호 });
         });
         currentMarkers.push(marker);
@@ -2551,6 +2578,10 @@
         // 카카오맵 SDK가 이동/확대 동작이 끝나고 화면이 안정된 시점에 한 번만 쏘는
         // 이벤트라 매 프레임마다 계산하지 않아도 됨).
         kakao.maps.event.addListener(mapInstance, "idle", updateListPanelByBounds);
+        // v2.235: 사람이 지도를 만지면 "같은 구만"을 풀고 전체 보기
+        kakao.maps.event.addListener(mapInstance, "dragstart", () => onUserMapAction("drag"));
+        kakao.maps.event.addListener(mapInstance, "zoom_changed", () => onUserMapAction("zoom"));
+        kakao.maps.event.addListener(mapInstance, "click", () => onUserMapAction("click"));
         wireLayerControl();
         wireLocateButton();
         wireHomeButton();
