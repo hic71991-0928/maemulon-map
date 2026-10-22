@@ -616,7 +616,11 @@
     padding: 10px;
     display: none;
   }
-  #attachPopupHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; cursor: move; user-select: none; background: #f2f4f6; border-radius: 8px; padding: 4px 6px; }
+  #attachPopupHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; cursor: move; user-select: none; background: #4e5968; border-radius: 8px; padding: 6px 8px; }
+  /* v2.241: [사장님 요청] 제목 줄을 진하게(잡고 옮기는 곳) + 그림·배지·이름에 곧바로 손가락 */
+  #attachPopupHeader #attachPopupTitle { color: #fff; }
+  #attachPopupHeader #attachPopupClose { color: #fff; }
+  #attachPopupList .attach-thumb, #attachPopupList .attach-file-icon, #attachPopupList .attach-name { cursor: pointer !important; }
   /* v2.240: [사장님 요청] 사진 목록을 연 매물 카드 표시 */
   .list-card.attach-open { outline: 3px solid #3182f6; outline-offset: -3px; background: #fff3bf !important; }
   #attachPopupTitle { font-size: 13.5px; font-weight: 700; color: var(--toss-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1012,7 +1016,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.240";
+    const KAKAO_MAP_VERSION = "2.241";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1669,9 +1673,10 @@
       const list = attachPopupTarget ? attachPopupWorkingList : [];
       attachPopupListEl.innerHTML = list.length ? list.map((a) => {
         const isImage = isImageAttachMap(a) && !!thumbSrcOf(a);
+        // v2.241: [사장님 요청] 그림·배지를 눌러도 열리게(data-id)
         const thumb = isImage
-          ? `<img src="${esc(thumbSrcOf(a))}" alt="${esc(a.name)}" class="attach-thumb" />`
-          : fileExtBadgeHtml(a.name);
+          ? `<img src="${esc(thumbSrcOf(a))}" alt="${esc(a.name)}" class="attach-thumb" data-id="${esc(a.id)}" />`
+          : fileExtBadgeHtml(a.name).replace("<span ", `<span data-id="${esc(a.id)}" `);
         // v2.229: [요청 반영] 파일 크기 표시 삭제(불필요) - 파일명(.attach-name)이
         // 자동으로 그 자리를 차지해서 긴 제목도 최대한 보이게.
         return `<div class="attach-item" data-id="${esc(a.id)}">
@@ -1833,7 +1838,7 @@
       if (files.length) { e.preventDefault(); addAttachFiles(files); }
     });
     attachPopupListEl.addEventListener("click", (e) => {
-      const openLink = e.target.closest(".attach-download, .attach-name");
+      const openLink = e.target.closest(".attach-download, .attach-name, .attach-thumb, .attach-file-icon");
       if (openLink && attachPopupTarget) {
         e.preventDefault();
         const item = attachPopupWorkingList.find((a) => a.id === openLink.dataset.id);

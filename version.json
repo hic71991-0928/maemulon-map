@@ -1,6 +1,6 @@
 {
-  "version": "2.296.0",
+  "version": "2.297.0",
   "date": "2026-10-22",
-  "note": "사진·PDF 미리 받아 두기, 사진 목록 위치·그림 표시(목록창·수정창·지도)",
+  "note": "빈 창 자동 닫기(↻ 뒤), 새 버전 단추 빨강, 사진 목록 손잡이·손가락, 수정창 아이콘 회색",
   "download": "https://drive.google.com/drive/folders/1VfWuTc2wE331XvbGLymE10-bOyHs4pF4"
 }
