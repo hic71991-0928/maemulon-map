@@ -200,7 +200,26 @@
   }
   .nav-hist-btn:hover:not(:disabled) { background: #eef4ff; border-color: var(--toss-blue); }
   .nav-hist-btn:disabled { opacity: 0.35; cursor: default; }
-  #helpTooltipText { white-space: pre-line; }
+  #helpTooltipText { white-space: normal; }
+  /* v2.238: [사장님 요청] 도움말 [✎ 고치기] (사장님 로그인 컴퓨터에서만 보임) */
+  #helpEditBtnMap {
+    margin-right: 8px; padding: 5px 14px;
+    border: 1.5px solid var(--toss-blue); border-radius: 7px;
+    background: #fff; color: var(--toss-blue);
+    font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  #helpEditBtnMap:hover { background: #eaf1ff; }
+  #helpCloseBtn { font-size: 15px; }
+  /* v2.238: [사장님 요청] 카드마다 [✏ 수정] 단추 */
+  .list-card-row4 { display: flex; align-items: center; }
+  .list-card-edit-btn {
+    margin-left: auto; flex: none;
+    padding: 2px 10px;
+    border: 1.5px solid #3182f6; border-radius: 6px;
+    background: #fff; color: #3182f6;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .list-card-edit-btn:hover { background: #eaf1ff; }
   /* v2.233(폴더판 v2.280 이식): [사장님 지적] 도움말을 읽고 난 뒤 닫을 방법이 없었다 → [닫기] 단추 */
   #helpCloseRow {
     display: flex; justify-content: flex-end;
@@ -225,9 +244,11 @@
     border-radius: 10px;
     box-shadow: 0 12px 28px rgba(25, 31, 40, 0.2);
     padding: 12px 14px;
-    font-size: 12.5px;
+    font-size: 16px;   /* v2.238: [사장님 요청] 글씨 크게 (12.5 → 16) */
     line-height: 1.6;
     color: var(--toss-text);
+    max-height: 70vh;
+    overflow-y: auto;
   }
 
   /* v2.132/v2.142 popup.css 이식: ①지역/②③거래유형·매물종류 팝업 */
@@ -865,7 +886,7 @@
   </div>
   <div id="helpTooltip" style="display:none">
     <div id="helpTooltipText"></div>
-    <div id="helpCloseRow"><button type="button" id="helpCloseBtn">닫기</button></div>
+    <div id="helpCloseRow"><button type="button" id="helpEditBtnMap" style="display:none">✎ 고치기</button><button type="button" id="helpCloseBtn">닫기</button></div>
   </div>
   <!-- v2.132/v2.142 popup.html 이식: ①지역 선택 팝업 -->
   <div id="regionFilterPopup" class="filter-popup" style="display:none">
@@ -988,7 +1009,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.236";
+    const KAKAO_MAP_VERSION = "2.238";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1315,7 +1336,7 @@
         kakao.maps.event.addListener(marker, "click", () => {
           ignoreMapClickUntil = Date.now() + 500;   // v2.235: 매물 표시 누름은 "지도 누름"으로 치지 않음
           selectItem({ id: rec.__매물번호, pos }, { pan: false, push: true });   // v2.236: 빨간 점·테두리도 이 매물로
-          sendToExtension({ type: "maemulon-open-edit", id: rec.__매물번호 });
+          // v2.237: [사장님 요청] 파란 표시는 "선택"만 한다. 수정창은 빨간 점을 누를 때 연다.
         });
         currentMarkers.push(marker);
         currentMarkerData.push({ id: rec.__매물번호, rec, pos, marker });
@@ -1462,8 +1483,9 @@
           <div class="list-card-row1" title="${esc(row1Text)}">${esc(row1Text)}</div>
           <div class="list-card-row2" title="${esc(row2Text)}">${esc(row2Text)}</div>
           <div class="list-card-row3 nls-mini-editable" data-mini-field="매물소개" title="${esc(row3Text)}">${esc(row3Text)}</div>
-          <div class="list-card-row4 nls-edit-open" title="${esc([rec["매물종류"], rec["거래유형"], priceText].filter(Boolean).join(" "))}">
+          <div class="list-card-row4" title="${esc([rec["매물종류"], rec["거래유형"], priceText].filter(Boolean).join(" "))}">
             <span class="list-card-type">${esc(rec["매물종류"] || "")}</span><span class="list-card-deal">${esc(rec["거래유형"] || "")}</span><span class="list-card-price-num">${esc(priceText)}</span>
+            <button type="button" class="list-card-edit-btn nls-card-edit" data-id="${esc(item.id)}" title="이 매물 수정창 열기">✏ 수정</button>
           </div>
         </div>
       </div>`;
@@ -1834,6 +1856,14 @@
       }
       // v2.176: [기능 추가] 여러 필드가 합쳐진 줄(매물코드+주소/제목+종류+면적/
       // 거래유형+가격) - popup.js의 area-open 관례와 동일하게 전체 수정창을 연다.
+      // v2.238: [사장님 요청] 카드의 [✏ 수정] 단추 - 그 매물을 선택(빨간 점·테두리)하고 수정창을 연다
+      const cardEdit = e.target.closest(".nls-card-edit");
+      if (cardEdit) {
+        const item = currentMarkerData.find((d) => d.id === cardEdit.dataset.id);
+        if (item) selectItem(item, { pan: false, push: true });
+        sendToExtension({ type: "maemulon-open-edit", id: cardEdit.dataset.id });
+        return;
+      }
       const editOpen = e.target.closest(".nls-edit-open");
       if (editOpen) {
         const cardEl = editOpen.closest(".list-card");
@@ -2609,16 +2639,124 @@
     // v2.228: [기능 추가] 도움말 아이콘 - 클릭하면 짧은 안내문을 풍선으로 보여준다
     // (popup.js와 동일 로직 복제, 별도 문서라 공유 불가). 아이콘은 이 파일이 외부
     // 호스팅(GitHub Pages)이라 확장 프로그램 안의 icons/ 폴더를 못 써서 base64로 직접 넣음.
-    const HELP_TEXT = "이미지 파일과 PDF 파일은 1클릭으로 열리고, 문서 파일들은 다운로드후 열립니다.\n\n· 오른쪽 목록의 매물이나 지도의 파란 표시를 누르면 깜빡이는 빨간 점과 빨간 테두리가 그 매물로 옮겨 갑니다(목록은 그대로).\n· [◀ 뒤로] [앞으로 ▶] 단추로 전에 선택했던 매물과 그때 보던 목록으로 돌아갈 수 있습니다.";
+    const HELP_TEXT = "이미지 파일과 PDF 파일은 1클릭으로 열리고, 문서 파일들은 다운로드후 열립니다.\n\n· 오른쪽 목록의 매물이나 지도의 파란 표시를 누르면 깜빡이는 빨간 점과 빨간 테두리가 그 매물로 옮겨 갑니다(목록은 그대로).\n· 수정창은 깜빡이는 빨간 점이나 카드의 [✏ 수정] 단추를 누르면 열립니다.\n· [◀ 뒤로] [앞으로 ▶] 단추로 전에 선택했던 매물과 그때 보던 목록으로 돌아갈 수 있습니다.";
     document.getElementById("helpIconImg").src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAWMSURBVEhLrVZfbFNlFD/nu723vV27dmOdGVu3lbZby/62JU7jw8BA+Bc1gntBgwnCAy8EiA/OOKJCJDEETQgLBGMQSTTRGEkIYuBBJQHB4LqNAWOyiWNzYyYCk7no5jHn2+6l+xxQCSf5JbfnnnN+93znz1eAhxRKpXSGqn/kUqDrKbcQrzkRvzQQO3KE6PMI0acjdjkQv9IRt7sAGgkAVd+HkiLDeN5E/I6TzAYCIO0UYp0aJ2uJmGaJG/EIZgStNE1a4/XSttxcesfrldju89F6v5+SHg+T2rYIcFoHqFfj3lfKTPMJHXHQCrLE76dPwmHqCoXoxooV9EdLC43v30/jra10u7mZhpcsoe5QiI5VVtKagoLMDxjTAF5Q488q5Q5Hg4E4yo4+TaP3y8upv76eeuNxGtm3jybHxkiViVu3aGj3buqJRmkwkaAvKiupwuWyMicDoEnlmSExt7tIRxxmhyLDoOPxOP2aSlF7KEQjBw/aRP9MTNDo6dN0+9Qpmhwft/VDe/ZQurycfmGfujpa4PFY5BNugJTKZ4uJeIwNczWNvo7HqT+VonQ0Sj1NTXbwv0dG6MqqVZQuK6O20lLqXrmS/hoYmPqgyUm6vHQptVdW0tVEgjrq6ihmmpJcQ7w4H8BQOWGuYTxj1ea98nKZKTtyBtdbWmjyzh0ZfGDHDvqxsJA66+okzs+ZQ8OtrfaHXduyRfqw77Vkko7GYuQUQsY1hdis8oIT8Sy/XOTz0fVUii5MB+6sraULqRRdbGykntWrqauhgTqqq6mzvp46qqqoraSEbp08aRP3rl9P6XnzpC+TDy1YQK8UFlpZDxQBuG3SAl1PWGPzaTRKPyeTdkYSNTXUEY9TezQ6RcrHGItRezhMI4cO2aR/dndTB9uyzbRvTyJB31ZVkXs6a0PT7na5W4g3WBl1uai7vp66MklnAX8EB8/MlGt/eflyao9E5Glk2vcnk7TY55PEDsSPbGId8SgrXwoEaCCV+g/RDNTWUntFBd08ccImHe/rk03FtVVJGVy6t4JBSSwQu8Baq46pH/R2MCiNVMdMpMNh6l23ziYd6+qSdU+HQrOSMvqSSTocjVqj9XsuQD4sA3BqiP2sfLe0VB6L6piJtmBQzqslvRs2UFtx8T1JGTxaR2Ixi3isxDSL4Vgk4nQLkTUxZ9zf3EyjZ85IXF68WDaaaqcSf15RYXX26NM5OY8BEaEpxCVWch0edNTcVJcWLZJLhXFp4cIZXTwbeEo+DIenagzw2+P5+bmyxl4hjmfbXLythvfutY96cOdOqVPtMpHZXFpmc83RtB2sjJsmXXnAOHGNbxw4cJd41y6pU+1U4hV5edY4fWyPU6nL9RQvEAbfLNyFqrOFdCRC17ZulTPM6Nu4UepUOwu8F85UV8v9z8Q6wBqbmACEKcRFfnw2L48G73fcvCpjMbkWGbxM7tXR1srcXFRk1zcfYKq+lhTr+lq+JDjrw5GIPB52VINlC/btTSbpm6oq8k5nawixbQYpC3d3jhDn+LHEMOhsTY088ochZ58riYQco4bpO1kA9AcAPCqvlKhhxB2IY1ajnaupkXeyGvh+kJkmEvRTIkHL/H5JKrsZYLHKN0P4XtYRpXHI6aTPKirk3cyBVBIV3Ehsy7fRk16vtanIAbBJ5ZlV+C+tlTk7rg0E6OT8+fJi5znnhcDHyOBn7gfG99XV9OrcuXYHy/HJltSSUl1PuhB/sAIYiLQwN5deLy6mD8JhuQJ59A5GIrQ9GJTT4Hc4bEIBcFUDWK7GzUqoqUkrcDg2GYg9VsAHAQEGdcQ38wB8arz/LS+Xlbn8mvacG3GfgXheQxzSEG8LAC7HTQ2x04F4SAd40QeQp/o/MmkMBDx8w9SZZrEHIKC+z0b+BSMZ7b8T1hkrAAAAAElFTkSuQmCC";
     const helpTooltipEl2 = document.getElementById("helpTooltip");
     const helpTooltipTextEl2 = document.getElementById("helpTooltipText");
     helpTooltipTextEl2.textContent = HELP_TEXT;
+    // v2.294: [사장님 요청] 도움말 꾸밈글(색·형광·크기·굵게) 안전장치.
+    // 사장님이 고친 도움말은 창고(사무실 공유)에 저장된다. 혹시 그 칸에 위험한 명령이 섞여도
+    // 화면에서 실행되지 않도록 **글자색·형광·글자크기·굵게·기울임·밑줄·줄바꿈만 남기고 나머지는 모두 지운다.**
+    // (popup.js · content.js · kakao-map.html 세 곳에 같은 내용이 들어 있다 - 별도 문서라 공유 불가)
+    const MM_HELP_SAFE = (function () {
+      const KEEP = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, BR: 1, DIV: 1, P: 1, SPAN: 1, FONT: 1 };
+      const DROP = { SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, LINK: 1, META: 1, IMG: 1, SVG: 1, MATH: 1,
+        TEMPLATE: 1, NOSCRIPT: 1, FORM: 1, INPUT: 1, BUTTON: 1, TEXTAREA: 1, SELECT: 1, VIDEO: 1, AUDIO: 1, A: 0 };
+      const COLOR_RE = /^(#[0-9a-f]{3,8}|rgba?\(\s*[\d.\s,%]+\)|[a-z]{3,20})$/i;
+      const SIZE_RE = /^(xx-small|x-small|small|medium|large|x-large|xx-large|xxx-large|\d{1,2}(\.\d+)?px)$/i;
+      const FONT_SIZE_MAP = { 1: "x-small", 2: "small", 3: "medium", 4: "large", 5: "x-large", 6: "xx-large", 7: "xxx-large" };
+      function cleanStyle(el, out) {
+        const st = el.style;
+        if (!st) return;
+        const c = (st.color || "").trim();
+        if (c && COLOR_RE.test(c)) out.push("color:" + c);
+        const bg = (st.backgroundColor || "").trim();
+        if (bg && COLOR_RE.test(bg)) out.push("background-color:" + bg);
+        const fs = (st.fontSize || "").trim();
+        if (fs && SIZE_RE.test(fs)) out.push("font-size:" + fs);
+        const fw = (st.fontWeight || "").trim();
+        if (/^(bold|bolder|[6-9]00)$/.test(fw)) out.push("font-weight:bold");
+      }
+      function walk(src, doc, dst) {
+        Array.from(src.childNodes).forEach((n) => {
+          if (n.nodeType === 3) {
+            String(n.nodeValue).split("\n").forEach((part, i) => {
+              if (i) dst.appendChild(doc.createElement("br"));
+              if (part) dst.appendChild(doc.createTextNode(part));
+            });
+            return;
+          }
+          if (n.nodeType !== 1) return;
+          const tag = String(n.tagName).toUpperCase();
+          if (DROP[tag]) return;
+          if (!KEEP[tag]) { walk(n, doc, dst); return; }
+          if (tag === "BR") { dst.appendChild(doc.createElement("br")); return; }
+          const styles = [];
+          let el;
+          if (tag === "FONT") {
+            el = doc.createElement("span");
+            const col = (n.getAttribute("color") || "").trim();
+            if (col && COLOR_RE.test(col)) styles.push("color:" + col);
+            const sz = n.getAttribute("size");
+            if (sz && FONT_SIZE_MAP[sz]) styles.push("font-size:" + FONT_SIZE_MAP[sz]);
+          } else {
+            el = doc.createElement(tag.toLowerCase());
+          }
+          cleanStyle(n, styles);
+          if (styles.length) el.setAttribute("style", styles.join(";"));
+          walk(n, doc, el);
+          dst.appendChild(el);
+        });
+      }
+      // 안전하게 걸러낸 화면 조각(DocumentFragment)을 돌려준다
+      function toFragment(html, doc) {
+        doc = doc || document;
+        const parsed = new DOMParser().parseFromString("<!doctype html><body>" + String(html || "") + "</body>", "text/html");
+        const frag = doc.createDocumentFragment();
+        walk(parsed.body, doc, frag);
+        return frag;
+      }
+      function clean(html) {
+        const box = document.createElement("div");
+        box.appendChild(toFragment(html));
+        return box.innerHTML;
+      }
+      function plainToHtml(text) {
+        const box = document.createElement("div");
+        String(text || "").split("\n").forEach((line, i) => {
+          if (i) box.appendChild(document.createElement("br"));
+          box.appendChild(document.createTextNode(line));
+        });
+        return box.innerHTML;
+      }
+      // 저장된 도움말 하나를 안전한 꾸밈글로 (예전 글자만 있던 도움말도 그대로 보이게)
+      function fromStored(texts, kind) {
+        const v = texts && typeof texts[kind] === "string" ? texts[kind].trim() : "";
+        if (!v) return "";
+        return texts.format === "html" ? clean(v) : plainToHtml(v);
+      }
+      // 받는 곳(el)의 내용을 안전한 꾸밈글로 바꿔 끼운다
+      function render(el, html) {
+        if (!el) return;
+        el.textContent = "";
+        el.appendChild(toFragment(html, el.ownerDocument));
+      }
+      return { toFragment, clean, plainToHtml, fromStored, render };
+    })();
+
+    // v2.238: [사장님 요청] 사장님이 목록창에서 고친 지도창 도움말(색·크기 포함)을 받아 보여준다.
+    //   사장님 아이디로 로그인한 컴퓨터면 [✎ 고치기] 단추도 보인다. (매물ON 2.294 이상에서만 - 옛 판은 기본 글)
+    const helpEditBtnMapEl = document.getElementById("helpEditBtnMap");
+    async function loadHelpFromExtension() {
+      const r = await sendToExtension({ type: "maemulon-get-help" });
+      if (!r) return;
+      const html = MM_HELP_SAFE.fromStored(r.texts, "map");
+      if (html) MM_HELP_SAFE.render(helpTooltipTextEl2, html);
+      if (helpEditBtnMapEl) helpEditBtnMapEl.style.display = r.isSuper ? "" : "none";
+    }
+    if (helpEditBtnMapEl) {
+      helpEditBtnMapEl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        helpTooltipEl2.style.display = "none";
+        sendToExtension({ type: "maemulon-open-help-editor", kind: "map" });
+      });
+    }
     const btnHelpEl2 = document.getElementById("btnHelp");
     btnHelpEl2.addEventListener("click", (e) => {
       e.stopPropagation();
       const isOpen = helpTooltipEl2.style.display !== "none";
       if (isOpen) { helpTooltipEl2.style.display = "none"; return; }
+      loadHelpFromExtension();   // v2.238: 방금 고친 글도 바로 보이게
       const rect = btnHelpEl2.getBoundingClientRect();
       const tipW2 = Math.min(520, window.innerWidth - 16);   // v2.233(폴더판 v2.278 이식)
       helpTooltipEl2.style.maxWidth = tipW2 + "px";
