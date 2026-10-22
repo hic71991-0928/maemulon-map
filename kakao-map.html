@@ -212,14 +212,15 @@
   #helpCloseBtn { font-size: 15px; }
   /* v2.238: [사장님 요청] 카드마다 [✏ 수정] 단추 */
   .list-card-row4 { display: flex; align-items: center; }
+  /* v2.239: [사장님 요청] 너무 눈에 띄지 않게 - 테두리·흰 바탕 없이 카드 바탕색 그대로, 연필+글씨만 */
   .list-card-edit-btn {
     margin-left: auto; flex: none;
-    padding: 2px 10px;
-    border: 1.5px solid #3182f6; border-radius: 6px;
-    background: #fff; color: #3182f6;
-    font-size: 13px; font-weight: 700; cursor: pointer;
+    padding: 2px 4px;
+    border: none;
+    background: transparent; color: #4e5968;
+    font-size: 13px; font-weight: 600; cursor: pointer;
   }
-  .list-card-edit-btn:hover { background: #eaf1ff; }
+  .list-card-edit-btn:hover { color: #191f28; text-decoration: underline; }
   /* v2.233(폴더판 v2.280 이식): [사장님 지적] 도움말을 읽고 난 뒤 닫을 방법이 없었다 → [닫기] 단추 */
   #helpCloseRow {
     display: flex; justify-content: flex-end;
@@ -1009,7 +1010,7 @@
     // 가져오도록 고침. **앞으로 kakao-map.html을 고칠 때마다 이 값도 반드시 같이
     // 올릴 것** (다른 파일들의 APP_VERSION과 번호를 맞출 필요는 없고, 이 파일만의
     // 독립된 버전이어도 무방 - 중요한 건 "고칠 때마다 반드시 올린다"는 습관 자체).
-    const KAKAO_MAP_VERSION = "2.238";
+    const KAKAO_MAP_VERSION = "2.239";
     document.getElementById("buildTag").textContent = "v" + KAKAO_MAP_VERSION;
 
     // [필수 설정] 카카오 개발자 콘솔(매물지도 앱)에서 발급받은 키.
@@ -1443,6 +1444,8 @@
       // 형식과 동일).
       const addrShort = [rec["시·도"], rec["시·군·구"], rec["법정동"]].filter(Boolean).join(" ");
       const row1Text = [rec["매물코드"] ? `<${rec["매물코드"]}>` : "", addrShort].filter(Boolean).join(" ") || "(주소 없음)";
+      // v2.239: [사장님 요청] 화면에는 동까지만, 마우스를 올리면 풍선에 번지까지(지번 전체) 보이게
+      const row1Tip = [rec["매물코드"] ? `<${rec["매물코드"]}>` : "", rec["지번"] || addrShort].filter(Boolean).join(" ") || row1Text;
       // 2번째 줄 - 제목 + 물건종류 + 면적
       const areaVal = rec["공급면적"] || rec["전용면적"] || rec["대지면적"];
       const row2Text = [rec["제목"], rec["매물종류"], areaVal ? `${areaVal}㎡` : ""].filter(Boolean).join(" · ") || "(제목 없음)";
@@ -1469,9 +1472,9 @@
       // 다시 채워넣는다(loadThumbForCard 참고) - 전체를 한 번에 다 받지 않는 이유는
       // v2.138 메시지 크기 제한 때문(위 background.js 주석 참고).
       const cachedAttachments = attachmentsById[item.id];
-      const firstImage = cachedAttachments && cachedAttachments.find((a) => (a.type || "").startsWith("image/"));
+      const firstImage = firstThumbImage(cachedAttachments);
       const thumbInner = firstImage
-        ? `<img src="${firstImage.dataUrl}" alt="" class="list-card-thumb-img" />`
+        ? `<img src="${esc(thumbSrcOf(firstImage))}" alt="" class="list-card-thumb-img" />`
         : `<span>${esc((rec["매물종류"] || "매").slice(0, 1))}</span>`;
       return `<div class="list-card${dealCardClass ? " " + dealCardClass : ""}${isFocused ? " list-card-focus" : ""}" data-id="${esc(item.id)}">
         <div class="list-card-thumb nls-thumb-open" data-id="${esc(item.id)}">
@@ -1480,12 +1483,12 @@
           <span class="list-card-heart${rec.__관심매물 ? " active" : ""}" data-id="${esc(item.id)}">${rec.__관심매물 ? "♥" : "♡"}</span>
         </div>
         <div class="list-card-body">
-          <div class="list-card-row1" title="${esc(row1Text)}">${esc(row1Text)}</div>
+          <div class="list-card-row1" title="${esc(row1Tip)}">${esc(row1Text)}</div>
           <div class="list-card-row2" title="${esc(row2Text)}">${esc(row2Text)}</div>
           <div class="list-card-row3 nls-mini-editable" data-mini-field="매물소개" title="${esc(row3Text)}">${esc(row3Text)}</div>
           <div class="list-card-row4" title="${esc([rec["매물종류"], rec["거래유형"], priceText].filter(Boolean).join(" "))}">
             <span class="list-card-type">${esc(rec["매물종류"] || "")}</span><span class="list-card-deal">${esc(rec["거래유형"] || "")}</span><span class="list-card-price-num">${esc(priceText)}</span>
-            <button type="button" class="list-card-edit-btn nls-card-edit" data-id="${esc(item.id)}" title="이 매물 수정창 열기">✏ 수정</button>
+            <button type="button" class="list-card-edit-btn nls-card-edit" data-id="${esc(item.id)}" title="이 매물 수정창 열기">✏️ 수정</button>
           </div>
         </div>
       </div>`;
@@ -1513,13 +1516,13 @@
       items.forEach((item) => {
         if (attachmentsById[item.id] !== undefined) return;
         fetchAttachments(item.id).then((list) => {
-          const isImage = list.find((a) => (a.type || "").startsWith("image/"));
+          const isImage = firstThumbImage(list);
           if (!isImage) return;
           const thumbEl = listPanelEl.querySelector(`.list-card-thumb[data-id="${CSS.escape(item.id)}"]`);
           if (thumbEl && !thumbEl.querySelector(".list-card-thumb-img")) {
             const placeholder = thumbEl.querySelector("span:not(.list-card-heart)");
             const img = document.createElement("img");
-            img.src = isImage.dataUrl;
+            img.src = thumbSrcOf(isImage);
             img.alt = "";
             img.className = "list-card-thumb-img";
             if (placeholder) thumbEl.replaceChild(img, placeholder);
@@ -1663,9 +1666,9 @@
     function renderAttachPopupList() {
       const list = attachPopupTarget ? attachPopupWorkingList : [];
       attachPopupListEl.innerHTML = list.length ? list.map((a) => {
-        const isImage = (a.type || "").startsWith("image/");
+        const isImage = isImageAttachMap(a) && !!thumbSrcOf(a);
         const thumb = isImage
-          ? `<img src="${a.dataUrl}" alt="${esc(a.name)}" class="attach-thumb" />`
+          ? `<img src="${esc(thumbSrcOf(a))}" alt="${esc(a.name)}" class="attach-thumb" />`
           : fileExtBadgeHtml(a.name);
         // v2.229: [요청 반영] 파일 크기 표시 삭제(불필요) - 파일명(.attach-name)이
         // 자동으로 그 자리를 차지해서 긴 제목도 최대한 보이게.
@@ -1677,18 +1680,30 @@
         </div>`;
       }).join("") : `<div class="attach-empty">등록된 파일/사진이 없습니다.</div>`;
     }
+    // v2.239: [버그 수정 - 사장님 지적 "썸네일이 안 나온다"] 다른 컴퓨터에서 온 매물은 원본 사진(dataUrl)은
+    //   아직 안 받았고 **작은 미리보기(thumb)만** 있다. 예전 지도는 원본만 찾아서 빈 그림(깨진 그림)이 나왔다.
+    //   목록창(popup.js)과 똑같이 "미리보기 → 원본" 순서로 쓰고, 이름 끝(.jpg 등)으로도 사진인지 알아본다.
+    const MAP_IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
+    function isImageAttachMap(a) {
+      if (!a) return false;
+      if (String(a.type || "").indexOf("image/") === 0) return true;
+      const m = /\.([^.]+)$/.exec(a.name || "");
+      return !!m && MAP_IMAGE_EXTS.indexOf(m[1].toLowerCase()) !== -1;
+    }
+    function thumbSrcOf(a) { return (a && (a.thumb || a.dataUrl)) || ""; }
+    function firstThumbImage(list) { return (list || []).find((a) => isImageAttachMap(a) && thumbSrcOf(a)); }
     function updateCardThumb(id) {
       const list = attachmentsById[id] || [];
-      const isImage = list.find((a) => (a.type || "").startsWith("image/"));
+      const isImage = firstThumbImage(list);
       const thumbEl = listPanelEl.querySelector(`.list-card-thumb[data-id="${CSS.escape(id)}"]`);
       if (!thumbEl) return;
       const existingImg = thumbEl.querySelector(".list-card-thumb-img");
       const placeholder = thumbEl.querySelector("span:not(.list-card-heart)");
       if (isImage) {
-        if (existingImg) { existingImg.src = isImage.dataUrl; return; }
+        if (existingImg) { existingImg.src = thumbSrcOf(isImage); return; }
         if (placeholder) {
           const img = document.createElement("img");
-          img.src = isImage.dataUrl;
+          img.src = thumbSrcOf(isImage);
           img.alt = "";
           img.className = "list-card-thumb-img";
           thumbEl.replaceChild(img, placeholder);
