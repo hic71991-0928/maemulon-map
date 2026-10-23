@@ -1,6 +1,6 @@
 {
-  "version": "2.299.0",
+  "version": "2.300.0",
   "date": "2026-10-22",
-  "note": "사무실·직원 관리: 메일 @뒤 두 글자까지, 모두 펼치기, 대표 2명 표시, 대표는 자기 사무실 명단만",
+  "note": "마이ALL [매물ON] 단추로 목록창 열기, 직원 [수정]해도 들어온 날 그대로",
   "download": "https://drive.google.com/drive/folders/1VfWuTc2wE331XvbGLymE10-bOyHs4pF4"
 }
