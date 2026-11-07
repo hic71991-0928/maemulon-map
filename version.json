@@ -1,6 +1,6 @@
 {
-  "version": "2.300.0",
-  "date": "2026-10-22",
-  "note": "마이ALL [매물ON] 단추로 목록창 열기, 직원 [수정]해도 들어온 날 그대로",
+  "version": "2.301.0",
+  "date": "2026-11-07",
+  "note": "등록창 비고 옆 중개업소 숫자 칸 · 목록·수정창 매물코드 앞 (숫자) 표시",
   "download": "https://drive.google.com/drive/folders/1VfWuTc2wE331XvbGLymE10-bOyHs4pF4"
 }
