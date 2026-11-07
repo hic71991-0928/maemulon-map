@@ -1,6 +1,6 @@
 {
-  "version": "2.301.0",
+  "version": "2.302.0",
   "date": "2026-11-07",
-  "note": "등록창 비고 옆 중개업소 숫자 칸 · 목록·수정창 매물코드 앞 (숫자) 표시",
+  "note": "목록 지번 칸을 줄이고 비고 칸을 넓혀 (숫자) 매물코드가 끝까지 보임",
   "download": "https://drive.google.com/drive/folders/1VfWuTc2wE331XvbGLymE10-bOyHs4pF4"
 }
